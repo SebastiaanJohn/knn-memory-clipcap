@@ -1,18 +1,18 @@
-import torch
-import clip
-from torch.utils.data import DataLoader, Dataset
-from PIL import Image
-import pickle
-from tqdm import tqdm
-import os
-import csv
-import threading
-import requests
-import shutil
-import PIL
-import json
-from typing import List, Tuple, Optional
 import argparse
+import csv
+import os
+import pickle
+import shutil
+import threading
+from typing import List, Optional, Tuple
+
+import clip
+import PIL
+import requests
+import torch
+from PIL import Image
+from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
 
 
 class ConceptualDS(Dataset):

@@ -1,12 +1,13 @@
-import torch
-import skimage.io as io
-import clip
-from PIL import Image
-import pickle
+import argparse
 import json
 import os
+import pickle
+
+import clip
+import skimage.io as io
+import torch
+from PIL import Image
 from tqdm import tqdm
-import argparse
 
 
 def main(clip_model_type: str):
