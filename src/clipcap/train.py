@@ -6,7 +6,6 @@ import os
 import pickle
 import sys
 from enum import Enum
-from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -28,20 +27,38 @@ class MappingType(Enum):
 
 
 class ClipCocoDataset(Dataset):
+    """Dataset for COCO captions and CLIP embeddings."""
 
-    def __init__(self, data_path: str,  prefix_length: int, gpt2_type: str = "gpt2",
-                normalize_prefix=False):
+    def __init__(
+        self,
+        data_path: str,
+        prefix_length: int,
+        gpt2_type: str = "gpt2",
+        normalize_prefix: bool = False,
+        ) -> None:
+        """Initialize dataset.
+
+        Args:
+            data_path (str): The path to the data file.
+            prefix_length (int): The length of the prefix to be used.
+            gpt2_type (str, optional): The type of GPT2 model to use. Defaults to "gpt2".
+            normalize_prefix (bool, optional): Whether to normalize the prefix. Defaults to False.
+        """
         self.tokenizer = GPT2Tokenizer.from_pretrained(gpt2_type)
         self.prefix_length = prefix_length
         self.normalize_prefix = normalize_prefix
+
         with open(data_path, 'rb') as f:
             all_data = pickle.load(f)
+
         print("Data size is %0d" % len(all_data["clip_embedding"]))
         sys.stdout.flush()
+
         self.prefixes = all_data["clip_embedding"]
         captions_raw = all_data["captions"]
         self.image_ids = [caption["image_id"] for caption in captions_raw]
         self.captions = [caption['caption'] for caption in captions_raw]
+
         if os.path.isfile(f"{data_path[:-4]}_tokens.pkl"):
             with open(f"{data_path[:-4]}_tokens.pkl", 'rb') as f:
                 self.captions_tokens, self.caption2embedding, self.max_seq_len = pickle.load(f)
@@ -59,7 +76,15 @@ class ClipCocoDataset(Dataset):
         all_len = torch.tensor([len(self.captions_tokens[i]) for i in range(len(self))]).float()
         self.max_seq_len = min(int(all_len.mean() + all_len.std() * 10), int(all_len.max()))
 
-    def pad_tokens(self, item: int):
+    def pad_tokens(self, item: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Pad tokens to max_seq_len and create mask.
+
+        Args:
+            item (int): index of the item
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]: tokens and mask
+        """
         tokens = self.captions_tokens[item]
         padding = self.max_seq_len - tokens.shape[0]
         if padding > 0:
@@ -72,25 +97,34 @@ class ClipCocoDataset(Dataset):
         tokens[~mask] = 0
         mask = mask.float()
         mask = torch.cat((torch.ones(self.prefix_length), mask), dim=0)  # adding prefix mask
+
         return tokens, mask
 
     def __len__(self) -> int:
+        """Return the length of the dataset."""
         return len(self.captions_tokens)
 
-    def __getitem__(self, item: int) -> Tuple[torch.Tensor, ...]:
+    def __getitem__(self, item: int) -> tuple[torch.Tensor, ...]:
+        """Get item from the dataset."""
         tokens, mask = self.pad_tokens(item)
         prefix = self.prefixes[self.caption2embedding[item]]
         if self.normalize_prefix:
             prefix = prefix.float()
             prefix = prefix / prefix.norm(2, -1)
+
         return tokens, mask, prefix
 
 class MLP(nn.Module):
+    """A simple MLP."""
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.model(x)
+    def __init__(self, sizes: tuple[int, ...], bias: bool = True, act = nn.Tanh):
+        """Initialize the MLP.
 
-    def __init__(self, sizes: Tuple[int, ...], bias=True, act=nn.Tanh):
+        Args:
+            sizes (Tuple[int, ...]): The sizes of the layers.
+            bias (bool, optional): Whether to use bias. Defaults to True.
+            act (optional): The activation function to use. Defaults to nn.Tanh.
+        """
         super(MLP, self).__init__()
         layers = []
         for i in range(len(sizes) - 1):
@@ -99,9 +133,30 @@ class MLP(nn.Module):
                 layers.append(act())
         self.model = nn.Sequential(*layers)
 
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass."""
+        return self.model(x)
 
 class MlpTransformer(nn.Module):
-    def __init__(self, in_dim, h_dim, out_d: Optional[int] = None, act=nnf.relu, dropout=0.):
+    """A transformer with MLPs instead of linear layers."""
+
+    def __init__(
+        self,
+        in_dim: int,
+        h_dim: int,
+        out_d: int | None = None,
+        act = nnf.relu,
+        dropout: float = 0.0,
+        ) -> None:
+        """Initialize the MLP transformer.
+
+        Args:
+            in_dim (int): The input dimension.
+            h_dim (int): The hidden dimension.
+            out_d (int | None, optional): The output dimension. Defaults to None.
+            act (_type_, optional): The activation function to use. Defaults to nnf.relu.
+            dropout (float, optional): The dropout probability. Defaults to 0.0.
+        """
         super().__init__()
         out_d = out_d if out_d is not None else in_dim
         self.fc1 = nn.Linear(in_dim, h_dim)
@@ -109,17 +164,36 @@ class MlpTransformer(nn.Module):
         self.fc2 = nn.Linear(h_dim, out_d)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass."""
         x = self.fc1(x)
         x = self.act(x)
         x = self.dropout(x)
         x = self.fc2(x)
         x = self.dropout(x)
+
         return x
 
 class MultiHeadAttention(nn.Module):
+    """Multi-Head Attention module."""
 
-    def __init__(self, dim_self, dim_ref, num_heads, bias=True, dropout=0.):
+    def __init__(
+        self,
+        dim_self: int,
+        dim_ref: int,
+        num_heads: int,
+        bias: bool = True,
+        dropout: float = 0.0,
+    ):
+        """Initialize the Multi-Head Attention module.
+
+        Args:
+            dim_self (int): The dimension of the self-attention.
+            dim_ref (int): The dimension of the reference.
+            num_heads (int): The number of heads.
+            bias (bool, optional): Whether to use bias. Defaults to True.
+            dropout (float, optional): The dropout probability. Defaults to 0.0.
+        """
         super().__init__()
         self.num_heads = num_heads
         head_dim = dim_self // num_heads
