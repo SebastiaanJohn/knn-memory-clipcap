@@ -4,7 +4,6 @@
 import clip
 import numpy as np
 import PIL.Image
-import skimage.io as io
 import torch
 import torch.nn.functional as nnf
 from torch import nn
@@ -15,8 +14,8 @@ from transformers import (
 
 
 WEIGHTS_PATHS = {
-    "coco": "coco_weights.pt",
-    "conceptual-captions": "conceptual_weights.pt",
+    "coco": "models/coco_weights.pt",
+    "conceptual-captions": "models/conceptual_weights.pt",
 }
 
 class Predictor:
@@ -39,20 +38,19 @@ class Predictor:
             model = model.to(self.device)
             self.models[key] = model
 
-    def predict(self, image: np.ndarray, model_name: str, use_beam_search: bool = True) -> str:
+    def predict(self, image: str, model_name: str, use_beam_search: bool = True) -> str:
         """Run a single prediction on the model.
 
         Args:
-            image (np.ndarray): The image to caption.
+            image (str): The path to the image to caption.
             model_name (str): The name of the model to use.
             use_beam_search (bool): Whether to use beam search or greedy search.
 
         Returns:
             str: The caption for the image.
         """
-        image = io.imread(image)
         model = self.models[model_name]
-        pil_image = PIL.Image.fromarray(image)
+        pil_image = PIL.Image.open(image)
         image = self.preprocess(pil_image).unsqueeze(0).to(self.device)
         with torch.no_grad():
             prefix = self.clip_model.encode_image(image).to(
@@ -362,3 +360,11 @@ def generate2(
             generated_list.append(output_text)
 
     return generated_list[0]
+
+if __name__ == "__main__":
+    # Put the models in the models directory
+    predictor = Predictor()
+
+    image_path = "images/COCO_val2014_000000060623.jpg"
+    caption = predictor.predict(image_path, model_name="coco")
+    print(caption)
