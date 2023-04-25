@@ -10,3 +10,8 @@ transformers
 tqdm
 ftfy
 git+https://github.com/openai/CLIP.git
+einops
+einops_exts
+filelock
+joblib
+faiss-gpu
