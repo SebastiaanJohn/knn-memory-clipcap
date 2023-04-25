@@ -18,6 +18,7 @@ WEIGHTS_PATHS = {
     "conceptual-captions": "models/conceptual_weights.pt",
 }
 
+
 class Predictor:
     """Predictor class for ClipCap."""
 
@@ -33,7 +34,9 @@ class Predictor:
         self.prefix_length = 10
         for key, weights_path in WEIGHTS_PATHS.items():
             model = ClipCaptionModel(self.prefix_length)
-            model.load_state_dict(torch.load(weights_path, map_location=torch.device("cpu")))
+            model.load_state_dict(
+                torch.load(weights_path, map_location=torch.device("cpu"))
+            )
             model = model.eval()
             model = model.to(self.device)
             self.models[key] = model
@@ -62,11 +65,10 @@ class Predictor:
         else:
             return generate2(model, self.tokenizer, embed=prefix_embed)
 
-
 class MLP(nn.Module):
     """A simple MLP."""
 
-    def __init__(self, sizes: tuple[int, ...], bias: bool = True, act = nn.Tanh):
+    def __init__(self, sizes: tuple[int, ...], bias: bool = True, act=nn.Tanh):
         """Initialize the MLP.
 
         Args:
@@ -162,6 +164,7 @@ class ClipCaptionModel(nn.Module):
 
 
 
+
 class ClipCaptionPrefix(ClipCaptionModel):
     """The ClipCap model with a prefix."""
     def parameters(self, recurse: bool = True):
@@ -216,13 +219,14 @@ def generate_beam(
         tuple[list[str], list[float]]: The generated captions and their scores.
     """
     model.eval()
-    stop_token_index = tokenizer.encode(stop_token)[0]
-    tokens = None
-    scores = None
     device = next(model.parameters()).device
+    stop_token_index = tokenizer.encode(stop_token)[0]
+    tokens, scores = None, None
     seq_lengths = torch.ones(beam_size, device=device)
     is_stopped = torch.zeros(beam_size, device=device, dtype=torch.bool)
+
     with torch.no_grad():
+        # Set up initial input embeddings
         if embed is not None:
             generated = embed
         else:
@@ -230,20 +234,26 @@ def generate_beam(
                 tokens = torch.tensor(tokenizer.encode(prompt))
                 tokens = tokens.unsqueeze(0).to(device)
                 generated = model.gpt.transformer.wte(tokens)
-        for i in range(entry_length):
+
+        # Generate captions step by step
+        for _ in range(entry_length):
             outputs = model.gpt(inputs_embeds=generated)
             logits = outputs.logits
             logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
             logits = logits.softmax(-1).log()
+
+            # First step: initialize scores and tokens
             if scores is None:
                 scores, next_tokens = logits.topk(beam_size, -1)
-                generated = generated.expand(beam_size, *generated.shape[1:])
                 next_tokens, scores = next_tokens.permute(1, 0), scores.squeeze(0)
+                generated = generated.expand(beam_size, *generated.shape[1:])
                 if tokens is None:
                     tokens = next_tokens
                 else:
                     tokens = tokens.expand(beam_size, *tokens.shape[1:])
                     tokens = torch.cat((tokens, next_tokens), dim=1)
+
+            # Subsequent steps: update scores and tokens
             else:
                 logits[is_stopped] = -float(np.inf)
                 logits[is_stopped, 0] = 0
@@ -262,19 +272,27 @@ def generate_beam(
                 generated = generated[next_tokens_source]
                 scores = scores_sum_average * seq_lengths
                 is_stopped = is_stopped[next_tokens_source]
+
+            # Update input embeddings with the next tokens
             next_token_embed = model.gpt.transformer.wte(next_tokens.squeeze()).view(
                 generated.shape[0], 1, -1
             )
             generated = torch.cat((generated, next_token_embed), dim=1)
+
+            # Check for stopping condition
             is_stopped = is_stopped + next_tokens.eq(stop_token_index).squeeze()
             if is_stopped.all():
                 break
+
+    # Normalize scores and generate output texts
     scores = scores / seq_lengths
     output_list = tokens.cpu().numpy()
     output_texts = [
         tokenizer.decode(output[: int(length)])
         for output, length in zip(output_list, seq_lengths)
     ]
+
+    # Order captions by their scores
     order = scores.argsort(descending=True)
     output_texts = [output_texts[i] for i in order]
 
@@ -293,7 +311,7 @@ def generate2(
     temperature: float = 1.0,
     stop_token: str = ".",
 ):
-    """Greeedy generation.
+    """Greedy generation.
 
     Args:
         model (ClipCaptionModel): The model to use.
@@ -311,14 +329,14 @@ def generate2(
         list[str]: The generated captions.
     """
     model.eval()
+    device = next(model.parameters()).device
     generated_list = []
     stop_token_index = tokenizer.encode(stop_token)[0]
     filter_value = -float("Inf")
-    device = next(model.parameters()).device
 
     with torch.no_grad():
-
-        for entry_idx in range(entry_count):
+        # Generate entry_count number of text entries
+        for _ in range(entry_count):
             if embed is not None:
                 generated = embed
             else:
@@ -326,17 +344,22 @@ def generate2(
                     tokens = torch.tensor(tokenizer.encode(prompt))
                     tokens = tokens.unsqueeze(0).to(device)
 
+                # Get the word embeddings from the model
                 generated = model.gpt.transformer.wte(tokens)
 
-            for i in range(entry_length):
-
+            for _ in range(entry_length):
+                # Get the logits from the model
                 outputs = model.gpt(inputs_embeds=generated)
                 logits = outputs.logits
                 logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
+
+                # Sort logits and calculate cumulative probabilities
                 sorted_logits, sorted_indices = torch.sort(logits, descending=True)
                 cumulative_probs = torch.cumsum(
                     nnf.softmax(sorted_logits, dim=-1), dim=-1
                 )
+
+                # Remove tokens with cumulative probability > top_p
                 sorted_indices_to_remove = cumulative_probs > top_p
                 sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[
                     ..., :-1
@@ -345,16 +368,23 @@ def generate2(
 
                 indices_to_remove = sorted_indices[sorted_indices_to_remove]
                 logits[:, indices_to_remove] = filter_value
+
+                # Get the next token and its embedding
                 next_token = torch.argmax(logits, -1).unsqueeze(0)
                 next_token_embed = model.gpt.transformer.wte(next_token)
+
+                # Update tokens and generated embeddings
                 if tokens is None:
                     tokens = next_token
                 else:
                     tokens = torch.cat((tokens, next_token), dim=1)
                 generated = torch.cat((generated, next_token_embed), dim=1)
+
+                # Stop generating tokens if the stop token is reached
                 if stop_token_index == next_token.item():
                     break
 
+            # Convert tokens to text and append to generated_list
             output_list = list(tokens.squeeze().cpu().numpy())
             output_text = tokenizer.decode(output_list)
             generated_list.append(output_text)
