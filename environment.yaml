@@ -14,3 +14,7 @@ dependencies:
     - transformers
     - tqdm
     - ftfy
+    - jupyter
+    - scikit-learn
+    - scikit-image
+    - git+https://github.com/openai/CLIP.git

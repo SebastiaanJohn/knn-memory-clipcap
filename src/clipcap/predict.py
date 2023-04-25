@@ -1,54 +1,30 @@
-# Prediction interface for Cog ⚙️
-# Reference: https://github.com/replicate/cog/blob/main/docs/python.md
+"""This file defines the prediction function for ClipCap."""
+
 
 import clip
-import os
-from torch import nn
 import numpy as np
+import PIL.Image
+import skimage.io as io
 import torch
 import torch.nn.functional as nnf
-import sys
-from typing import Tuple, List, Union, Optional
+from torch import nn
 from transformers import (
-    GPT2Tokenizer,
     GPT2LMHeadModel,
-    AdamW,
-    get_linear_schedule_with_warmup,
+    GPT2Tokenizer,
 )
-import skimage.io as io
-import PIL.Image
 
-import cog
-
-# import torch
-
-N = type(None)
-V = np.array
-ARRAY = np.ndarray
-ARRAYS = Union[Tuple[ARRAY, ...], List[ARRAY]]
-VS = Union[Tuple[V, ...], List[V]]
-VN = Union[V, N]
-VNS = Union[VS, N]
-T = torch.Tensor
-TS = Union[Tuple[T, ...], List[T]]
-TN = Optional[T]
-TNS = Union[Tuple[TN, ...], List[TN]]
-TSN = Optional[TS]
-TA = Union[T, ARRAY]
 
 WEIGHTS_PATHS = {
     "coco": "coco_weights.pt",
     "conceptual-captions": "conceptual_weights.pt",
 }
 
-D = torch.device
-CPU = torch.device("cpu")
+class Predictor:
+    """Predictor class for ClipCap."""
 
-
-class Predictor(cog.Predictor):
-    def setup(self):
-        """Load the model into memory to make running multiple predictions efficient"""
-        self.device = torch.device("cuda")
+    def __init__(self) -> None:
+        """Load the model into memory to make running multiple predictions efficient."""
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.clip_model, self.preprocess = clip.load(
             "ViT-B/32", device=self.device, jit=False
         )
@@ -58,29 +34,24 @@ class Predictor(cog.Predictor):
         self.prefix_length = 10
         for key, weights_path in WEIGHTS_PATHS.items():
             model = ClipCaptionModel(self.prefix_length)
-            model.load_state_dict(torch.load(weights_path, map_location=CPU))
+            model.load_state_dict(torch.load(weights_path, map_location=torch.device("cpu")))
             model = model.eval()
             model = model.to(self.device)
             self.models[key] = model
 
-    @cog.input("image", type=cog.Path, help="Input image")
-    @cog.input(
-        "model",
-        type=str,
-        options=WEIGHTS_PATHS.keys(),
-        default="coco",
-        help="Model to use",
-    )
-    @cog.input(
-        "use_beam_search",
-        type=bool,
-        default=False,
-        help="Whether to apply beam search to generate the output text",
-    )
-    def predict(self, image, model, use_beam_search):
-        """Run a single prediction on the model"""
+    def predict(self, image: np.ndarray, model_name: str, use_beam_search: bool = True) -> str:
+        """Run a single prediction on the model.
+
+        Args:
+            image (np.ndarray): The image to caption.
+            model_name (str): The name of the model to use.
+            use_beam_search (bool): Whether to use beam search or greedy search.
+
+        Returns:
+            str: The caption for the image.
+        """
         image = io.imread(image)
-        model = self.models[model]
+        model = self.models[model_name]
         pil_image = PIL.Image.fromarray(image)
         image = self.preprocess(pil_image).unsqueeze(0).to(self.device)
         with torch.no_grad():
@@ -95,10 +66,16 @@ class Predictor(cog.Predictor):
 
 
 class MLP(nn.Module):
-    def forward(self, x: T) -> T:
-        return self.model(x)
+    """A simple MLP."""
 
-    def __init__(self, sizes: Tuple[int, ...], bias=True, act=nn.Tanh):
+    def __init__(self, sizes: tuple[int, ...], bias: bool = True, act = nn.Tanh):
+        """Initialize the MLP.
+
+        Args:
+            sizes (Tuple[int, ...]): The sizes of the layers.
+            bias (bool, optional): Whether to use bias. Defaults to True.
+            act (optional): The activation function to use. Defaults to nn.Tanh.
+        """
         super(MLP, self).__init__()
         layers = []
         for i in range(len(sizes) - 1):
@@ -107,32 +84,21 @@ class MLP(nn.Module):
                 layers.append(act())
         self.model = nn.Sequential(*layers)
 
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass."""
+        return self.model(x)
+
 
 class ClipCaptionModel(nn.Module):
-
-    # @functools.lru_cache #FIXME
-    def get_dummy_token(self, batch_size: int, device: D) -> T:
-        return torch.zeros(
-            batch_size, self.prefix_length, dtype=torch.int64, device=device
-        )
-
-    def forward(
-        self, tokens: T, prefix: T, mask: Optional[T] = None, labels: Optional[T] = None
-    ):
-        embedding_text = self.gpt.transformer.wte(tokens)
-        prefix_projections = self.clip_project(prefix).view(
-            -1, self.prefix_length, self.gpt_embedding_size
-        )
-        # print(embedding_text.size()) #torch.Size([5, 67, 768])
-        # print(prefix_projections.size()) #torch.Size([5, 1, 768])
-        embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
-        if labels is not None:
-            dummy_token = self.get_dummy_token(tokens.shape[0], tokens.device)
-            labels = torch.cat((dummy_token, tokens), dim=1)
-        out = self.gpt(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
-        return out
+    """The model for ClipCap."""
 
     def __init__(self, prefix_length: int, prefix_size: int = 512):
+        """Initialize the model.
+
+        Args:
+            prefix_length (int): The length of the prefix.
+            prefix_size (int, optional): The size of the prefix. Defaults to 512.
+        """
         super(ClipCaptionModel, self).__init__()
         self.prefix_length = prefix_length
         self.gpt = GPT2LMHeadModel.from_pretrained("gpt2")
@@ -150,28 +116,107 @@ class ClipCaptionModel(nn.Module):
                 )
             )
 
+    # @functools.lru_cache #FIXME
+    def get_dummy_token(self, batch_size: int, device: torch.device) -> torch.Tensor:
+        """Create a dummy token for the start of the caption.
+
+        Args:
+            batch_size (int): The batch size.
+            device (torch.device): The device to use.
+
+        Returns:
+            torch.Tensor: The dummy token.
+        """
+        return torch.zeros(
+            batch_size, self.prefix_length, dtype=torch.int64, device=device
+        )
+
+    def forward(
+        self,
+        tokens: torch.Tensor,
+        prefix: torch.Tensor,
+        mask: torch.Tensor | None = None,
+        labels: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """The forward pass of the ClipCap model.
+
+        Args:
+            tokens (torch.Tensor): The tokens to predict.
+            prefix (torch.Tensor): The prefix to use.
+            mask (torch.Tensor | None, optional): The mask to use. Defaults to None.
+            labels (torch.Tensor | None, optional): The labels to use. Defaults to None.
+
+        Returns:
+            torch.Tensor: The output of the model.
+        """
+        embedding_text = self.gpt.transformer.wte(tokens)
+        prefix_projections = self.clip_project(prefix).view(
+            -1, self.prefix_length, self.gpt_embedding_size
+        )
+        # print(embedding_text.size()) #torch.Size([5, 67, 768])
+        # print(prefix_projections.size()) #torch.Size([5, 1, 768])
+        embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
+        if labels is not None:
+            dummy_token = self.get_dummy_token(tokens.shape[0], tokens.device)
+            labels = torch.cat((dummy_token, tokens), dim=1)
+
+        return self.gpt(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
+
+
 
 class ClipCaptionPrefix(ClipCaptionModel):
+    """The ClipCap model with a prefix."""
     def parameters(self, recurse: bool = True):
+        """The parameters of the model.
+
+        Args:
+            recurse (bool, optional): Whether to recurse. Defaults to True.
+
+        Returns:
+            Iterator[Parameter]: The parameters.
+        """
         return self.clip_project.parameters()
 
-    def train(self, mode: bool = True):
+    def train(self, mode: bool = True) -> "ClipCaptionPrefix":
+        """Train the model.
+
+        Args:
+            mode (bool, optional): Whether to train. Defaults to True.
+
+        Returns:
+            ClipCaptionPrefix: The model.
+        """
         super(ClipCaptionPrefix, self).train(mode)
         self.gpt.eval()
+
         return self
 
 
 def generate_beam(
-    model,
-    tokenizer,
+    model: ClipCaptionModel,
+    tokenizer: GPT2Tokenizer,
     beam_size: int = 5,
-    prompt=None,
-    embed=None,
-    entry_length=67,
-    temperature=1.0,
+    prompt: str | None = None,
+    embed: torch.Tensor | None = None,
+    entry_length: int = 67,
+    temperature: float = 1.0,
     stop_token: str = ".",
 ):
+    """Beam search generation.
 
+    Args:
+        model (ClipCaptionModel): The model to use.
+        tokenizer (GPT2Tokenizer): The tokenizer to use.
+        beam_size (int, optional): Beam size. Defaults to 5.
+        prompt (str | None, optional): The prompt to use. Defaults to None.
+        embed (torch.Tensor | None, optional): The embedding to use. Defaults to None.
+        entry_length (int, optional): The length of the entry. Defaults to 67.
+        temperature (float, optional): The temperature to use. Defaults to 1.0.
+        stop_token (str, optional): The stop token to use. Defaults to ".".
+
+    Returns:
+        tuple[list[str], list[float]]: The generated captions and their scores.
+    """
     model.eval()
     stop_token_index = tokenizer.encode(stop_token)[0]
     tokens = None
@@ -234,23 +279,40 @@ def generate_beam(
     ]
     order = scores.argsort(descending=True)
     output_texts = [output_texts[i] for i in order]
+
     return output_texts
 
 
 def generate2(
-    model,
-    tokenizer,
-    tokens=None,
-    prompt=None,
-    embed=None,
-    entry_count=1,
-    entry_length=67,  # maximum number of words
-    top_p=0.8,
-    temperature=1.0,
+    model: ClipCaptionModel,
+    tokenizer: GPT2Tokenizer,
+    tokens: torch.Tensor | None = None,
+    prompt: str | None = None,
+    embed: torch.Tensor | None = None,
+    entry_count: int = 1,
+    entry_length: int = 67,  # maximum number of words
+    top_p: float = 0.8,
+    temperature: float = 1.0,
     stop_token: str = ".",
 ):
+    """Greeedy generation.
+
+    Args:
+        model (ClipCaptionModel): The model to use.
+        tokenizer (GPT2Tokenizer): The tokenizer to use.
+        tokens (torch.Tensor | None, optional): The tokens to use. Defaults to None.
+        prompt (str | None, optional): The prompt to use. Defaults to None.
+        embed (torch.Tensor | None, optional): The embedding to use. Defaults to None.
+        entry_count (int, optional): The number of entries to generate. Defaults to 1.
+        entry_length (int, optional): The length of the entry. Defaults to 67.
+        temperature (float, optional): The temperature to use. Defaults to 1.0.
+        top_p (float, optional): The top p to use. Defaults to 0.8.
+        stop_token (str, optional): The stop token to use. Defaults to ".".
+
+    Returns:
+        list[str]: The generated captions.
+    """
     model.eval()
-    generated_num = 0
     generated_list = []
     stop_token_index = tokenizer.encode(stop_token)[0]
     filter_value = -float("Inf")
