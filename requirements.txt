@@ -4,3 +4,7 @@ torch
 torchvision
 tqdm
 jupyter
+scikit-learn
+transformers
+tqdm
+ftfy
