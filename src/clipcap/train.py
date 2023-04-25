@@ -1,53 +1,36 @@
-import torch
-import torch.nn as nn
-from torch.nn import functional as nnf
-from torch.utils.data import Dataset, DataLoader
-from enum import Enum
-from transformers import GPT2Tokenizer, GPT2LMHeadModel, AdamW, get_linear_schedule_with_warmup
-from tqdm import tqdm
+"""Training script for CLIPCAP model."""
+
+import argparse
+import json
 import os
 import pickle
 import sys
-import argparse
-import json
-from typing import Tuple, Optional, Union
+from enum import Enum
+from typing import Optional, Tuple, Union
+
+import torch
+import torch.nn as nn
+from torch.nn import functional as nnf
+from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
+from transformers import (
+    AdamW,
+    GPT2LMHeadModel,
+    GPT2Tokenizer,
+    get_linear_schedule_with_warmup,
+)
 
 
 class MappingType(Enum):
+    """Type of mapping from CLIP embedding to GPT2 prefix."""
     MLP = 'mlp'
     Transformer = 'transformer'
 
 
 class ClipCocoDataset(Dataset):
 
-    def __len__(self) -> int:
-        return len(self.captions_tokens)
-
-    def pad_tokens(self, item: int):
-        tokens = self.captions_tokens[item]
-        padding = self.max_seq_len - tokens.shape[0]
-        if padding > 0:
-            tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
-            self.captions_tokens[item] = tokens
-        elif padding < 0:
-            tokens = tokens[:self.max_seq_len]
-            self.captions_tokens[item] = tokens
-        mask = tokens.ge(0)  # mask is zero where we out of sequence
-        tokens[~mask] = 0
-        mask = mask.float()
-        mask = torch.cat((torch.ones(self.prefix_length), mask), dim=0)  # adding prefix mask
-        return tokens, mask
-
-    def __getitem__(self, item: int) -> Tuple[torch.Tensor, ...]:
-        tokens, mask = self.pad_tokens(item)
-        prefix = self.prefixes[self.caption2embedding[item]]
-        if self.normalize_prefix:
-            prefix = prefix.float()
-            prefix = prefix / prefix.norm(2, -1)
-        return tokens, mask, prefix
-
     def __init__(self, data_path: str,  prefix_length: int, gpt2_type: str = "gpt2",
-                 normalize_prefix=False):
+                normalize_prefix=False):
         self.tokenizer = GPT2Tokenizer.from_pretrained(gpt2_type)
         self.prefix_length = prefix_length
         self.normalize_prefix = normalize_prefix
@@ -76,6 +59,31 @@ class ClipCocoDataset(Dataset):
         all_len = torch.tensor([len(self.captions_tokens[i]) for i in range(len(self))]).float()
         self.max_seq_len = min(int(all_len.mean() + all_len.std() * 10), int(all_len.max()))
 
+    def pad_tokens(self, item: int):
+        tokens = self.captions_tokens[item]
+        padding = self.max_seq_len - tokens.shape[0]
+        if padding > 0:
+            tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
+            self.captions_tokens[item] = tokens
+        elif padding < 0:
+            tokens = tokens[:self.max_seq_len]
+            self.captions_tokens[item] = tokens
+        mask = tokens.ge(0)  # mask is zero where we out of sequence
+        tokens[~mask] = 0
+        mask = mask.float()
+        mask = torch.cat((torch.ones(self.prefix_length), mask), dim=0)  # adding prefix mask
+        return tokens, mask
+
+    def __len__(self) -> int:
+        return len(self.captions_tokens)
+
+    def __getitem__(self, item: int) -> Tuple[torch.Tensor, ...]:
+        tokens, mask = self.pad_tokens(item)
+        prefix = self.prefixes[self.caption2embedding[item]]
+        if self.normalize_prefix:
+            prefix = prefix.float()
+            prefix = prefix / prefix.norm(2, -1)
+        return tokens, mask, prefix
 
 class MLP(nn.Module):
 
@@ -334,8 +342,10 @@ def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
     return model
 
 
-def main():
+def main() -> None:
+    """Main training routine."""
     parser = argparse.ArgumentParser()
+
     parser.add_argument('--data', default='./data/coco/oscar_split_train.pkl')
     parser.add_argument('--out_dir', default='./checkpoints')
     parser.add_argument('--prefix', default='coco_prefix', help='prefix for saved filenames')
@@ -349,11 +359,14 @@ def main():
     parser.add_argument('--num_layers', type=int, default=8)
     parser.add_argument('--is_rn', dest='is_rn', action='store_true')
     parser.add_argument('--normalize_prefix', dest='normalize_prefix', action='store_true')
+
     args = parser.parse_args()
+
     prefix_length = args.prefix_length
     dataset = ClipCocoDataset(args.data, prefix_length, normalize_prefix=args.normalize_prefix)
     prefix_dim = 640 if args.is_rn else 512
     args.mapping_type = {'mlp': MappingType.MLP, 'transformer': MappingType.Transformer}[args.mapping_type]
+
     if args.only_prefix:
         model = ClipCaptionPrefix(prefix_length, clip_length=args.prefix_length_clip, prefix_size=prefix_dim,
                                   num_layers=args.num_layers, mapping_type=args.mapping_type)
@@ -363,8 +376,8 @@ def main():
                                   num_layers=args.num_layers, mapping_type=args.mapping_type)
         print("Train both prefix and GPT")
         sys.stdout.flush()
-    train(dataset, model, args, output_dir=args.out_dir, output_prefix=args.prefix)
 
+    train(dataset, model, args, output_dir=args.out_dir, output_prefix=args.prefix)
 
 if __name__ == '__main__':
     main()
