@@ -203,7 +203,22 @@ class MultiHeadAttention(nn.Module):
         self.project = nn.Linear(dim_self, dim_self)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, y=None, mask=None):
+    def forward(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Forward pass.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+            y (torch.Tensor | None, optional): The reference tensor. Defaults to None.
+            mask (torch.Tensor | None, optional): The mask tensor. Defaults to None.
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]: The attention and the output.
+        """
         y = y if y is not None else x
         b, n, c = x.shape
         _, m, d = y.shape
@@ -220,52 +235,112 @@ class MultiHeadAttention(nn.Module):
         attention = attention.softmax(dim=2)
         out = torch.einsum('bnmh,bmhd->bnhd', attention, values).reshape(b, n, c)
         out = self.project(out)
+
         return out, attention
 
 
 class TransformerLayer(nn.Module):
+    """A single transformer layer."""
 
-    def forward_with_attention(self, x, y=None, mask=None):
-        x_, attention = self.attn(self.norm1(x), y, mask)
-        x = x + x_
-        x = x + self.mlp(self.norm2(x))
-        return x, attention
+    def __init__(
+        self,
+        dim_self: int,
+        dim_ref: int,
+        num_heads: int,
+        mlp_ratio: float = 4.0,
+        bias: bool = False,
+        dropout: float = 0.0,
+        act = nnf.relu,
+        norm_layer = nn.LayerNorm
+    ):
+        """Initialize the transformer layer.
 
-    def forward(self, x, y=None, mask=None):
-        x = x + self.attn(self.norm1(x), y, mask)[0]
-        x = x + self.mlp(self.norm2(x))
-        return x
-
-    def __init__(self, dim_self, dim_ref, num_heads, mlp_ratio=4., bias=False, dropout=0., act=nnf.relu,
-                 norm_layer: nn.Module = nn.LayerNorm):
+        Args:
+            dim_self (int): The dimension of the self-attention.
+            dim_ref (int): The dimension of the reference.
+            num_heads (int): The number of heads.
+            mlp_ratio (float, optional): The ratio of the MLP hidden dimension to the input dimension.
+                Defaults to 4.0.
+            bias (bool, optional): Whether to use bias. Defaults to False.
+            dropout (float, optional): The dropout probability. Defaults to 0.0.
+            act (_type_, optional): The activation function to use. Defaults to nnf.relu.
+            norm_layer (_type_, optional): The normalization layer to use. Defaults to nn.LayerNorm.
+        """
         super().__init__()
         self.norm1 = norm_layer(dim_self)
         self.attn = MultiHeadAttention(dim_self, dim_ref, num_heads, bias=bias, dropout=dropout)
         self.norm2 = norm_layer(dim_self)
         self.mlp = MlpTransformer(dim_self, int(dim_self * mlp_ratio), act=act, dropout=dropout)
 
+    def forward_with_attention(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Forward pass with attention.
 
-class Transformer(nn.Module):
+        Args:
+            x (torch.Tensor): The input tensor.
+            y (torch.Tensor | None, optional): The reference tensor. Defaults to None.
+            mask (torch.Tensor | None, optional): The mask tensor. Defaults to None.
 
-    def forward_with_attention(self, x, y=None, mask=None):
-        attentions = []
-        for layer in self.layers:
-            x, att = layer.forward_with_attention(x, y, mask)
-            attentions.append(att)
-        return x, attentions
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]: The attention and the output.
+        """
+        x_, attention = self.attn(self.norm1(x), y, mask)
+        x = x + x_
+        x = x + self.mlp(self.norm2(x))
 
-    def forward(self, x, y=None, mask=None):
-        for i, layer in enumerate(self.layers):
-            if i % 2 == 0 and self.enc_dec: # cross
-                x = layer(x, y)
-            elif self.enc_dec:  # self
-                x = layer(x, x, mask)
-            else:  # self or cross
-                x = layer(x, y, mask)
+        return x, attention
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None
+    ) -> torch.Tensor:
+        """Forward pass.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+            y (torch.Tensor | None, optional): The reference tensor. Defaults to None.
+            mask (torch.Tensor | None, optional): The mask tensor. Defaults to None.
+
+        Returns:
+            torch.Tensor: The output tensor.
+        """
+        x = x + self.attn(self.norm1(x), y, mask)[0]
+        x = x + self.mlp(self.norm2(x))
+
         return x
 
-    def __init__(self, dim_self: int, num_heads: int, num_layers: int, dim_ref: Optional[int] = None,
-                 mlp_ratio: float = 2., act=nnf.relu, norm_layer: nn.Module = nn.LayerNorm, enc_dec: bool = False):
+class Transformer(nn.Module):
+    """A transformer module."""
+
+    def __init__(
+        self,
+        dim_self: int,
+        num_heads: int,
+        num_layers: int,
+        dim_ref: int | None = None,
+        mlp_ratio: float = 2.0,
+        act=nnf.relu,
+        norm_layer = nn.LayerNorm,
+        enc_dec: bool = False
+    ) -> None:
+        """Initialize the transformer.
+
+        Args:
+            dim_self (int): The dimension of the self-attention.
+            num_heads (int): The number of heads.
+            num_layers (int): The number of layers.
+            dim_ref (int | None, optional): The dimension of the reference. Defaults to None.
+            mlp_ratio (float, optional): The ratio of the MLP hidden dimension to the input dimension.
+            act (_type_, optional): The activation function to use.
+            norm_layer (_type_, optional): The normalization layer to use.
+            enc_dec (bool, optional): Whether to use encoder-decoder attention. Defaults to False.
+        """
         super(Transformer, self).__init__()
         dim_ref = dim_ref if dim_ref is not None else dim_self
         self.enc_dec = enc_dec
@@ -281,45 +356,113 @@ class Transformer(nn.Module):
                 layers.append(TransformerLayer(dim_self, dim_ref, num_heads, mlp_ratio, act=act, norm_layer=norm_layer))
         self.layers = nn.ModuleList(layers)
 
+    def forward_with_attention(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, list[torch.Tensor]]:
+        """The forward pass with attention.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+            y (torch.Tensor | None, optional): The reference tensor. Defaults to None.
+            mask (torch.Tensor | None, optional): The mask tensor. Defaults to None.
+
+        Returns:
+            tuple[torch.Tensor, list[torch.Tensor]]: The output and the attention.
+        """
+        attentions = []
+        for layer in self.layers:
+            x, att = layer.forward_with_attention(x, y, mask)
+            attentions.append(att)
+
+        return x, attentions
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None
+    )-> torch.Tensor:
+        """The forward pass.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+            y (torch.Tensor | None, optional): The reference tensor. Defaults to None.
+            mask (torch.Tensor | None, optional): The mask tensor. Defaults to None.
+
+        Returns:
+            torch.Tensor: The output tensor.
+        """
+        for i, layer in enumerate(self.layers):
+            if i % 2 == 0 and self.enc_dec: # cross
+                x = layer(x, y)
+            elif self.enc_dec:  # self
+                x = layer(x, x, mask)
+            else:  # self or cross
+                x = layer(x, y, mask)
+        return x
 
 class TransformerMapper(nn.Module):
+    """A transformer mapper module."""
 
-    def forward(self, x):
-        x = self.linear(x).view(x.shape[0], self.clip_length, -1)
-        prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
-        prefix = torch.cat((x, prefix), dim=1)
-        out = self.transformer(prefix)[:, self.clip_length:]
-        return out
+    def __init__(
+        self,
+        dim_clip: int,
+        dim_embedding: int,
+        prefix_length: int,
+        clip_length: int,
+        num_layers: int = 8
+    ) -> None:
+        """Initialize the transformer mapper.
 
-    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, num_layers: int = 8):
+        Args:
+            dim_clip (int): The dimension of the clip.
+            dim_embedding (int): The dimension of the embedding space.
+            prefix_length (int): The length of the prefix.
+            clip_length (int): The length of the clip.
+            num_layers (int, optional): The number of layers. Defaults to 8.
+        """
         super(TransformerMapper, self).__init__()
         self.clip_length = clip_length
         self.transformer = Transformer(dim_embedding, 8, num_layers)
         self.linear = nn.Linear(dim_clip, clip_length * dim_embedding)
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
 
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """The forward pass."""
+        x = self.linear(x).view(x.shape[0], self.clip_length, -1)
+        prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
+        prefix = torch.cat((x, prefix), dim=1)
+        out = self.transformer(prefix)[:, self.clip_length:]
 
-class ClipCaptionModel(nn.Module):
-
-    def get_dummy_token(self, batch_size: int, device: torch.device) -> torch.Tensor:
-        return torch.zeros(batch_size, self.prefix_length, dtype=torch.int64, device=device)
-
-    def forward(self, tokens: torch.Tensor, prefix: torch.Tensor, mask: Optional[torch.Tensor] = None,
-                labels: Optional[torch.Tensor] = None):
-        embedding_text = self.gpt.transformer.wte(tokens)
-        prefix_projections = self.clip_project(prefix).view(-1, self.prefix_length, self.gpt_embedding_size)
-        embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
-        if labels is not None:
-            dummy_token = self.get_dummy_token(tokens.shape[0], tokens.device)
-            labels = torch.cat((dummy_token, tokens), dim=1)
-        out = self.gpt(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
         return out
 
-    def __init__(self, prefix_length: int, clip_length: Optional[int] = None, prefix_size: int = 512,
-                 num_layers: int = 8, mapping_type: MappingType = MappingType.MLP):
+
+class ClipCaptionModel(nn.Module):
+    """The model for ClipCap."""
+
+    def __init__(
+        self,
+        prefix_length: int,
+        clip_length: int | None = None,
+        prefix_size: int = 512,
+        num_layers: int = 8,
+        mapping_type: MappingType = MappingType.MLP
+    ) -> None:
+        """Initialize the model.
+
+        Args:
+            prefix_length (int): The length of the prefix.
+            clip_length (int | None, optional): The length of the clip. Defaults to None.
+            prefix_size (int, optional): The size of the prefix. Defaults to 512.
+            num_layers (int, optional): The number of layers. Defaults to 8.
+            mapping_type (MappingType, optional): The type of the mapping. Defaults to MappingType.MLP.
+        """
         super(ClipCaptionModel, self).__init__()
         self.prefix_length = prefix_length
-        self.gpt = GPT2LMHeadModel.from_pretrained('gpt2')
+        self.gpt = GPT2LMHeadModel.from_pretrained("gpt2")
         self.gpt_embedding_size = self.gpt.transformer.wte.weight.shape[1]
         if mapping_type == MappingType.MLP:
             self.clip_project = MLP((prefix_size, (self.gpt_embedding_size * prefix_length) // 2,
@@ -328,19 +471,80 @@ class ClipCaptionModel(nn.Module):
             self.clip_project = TransformerMapper(prefix_size, self.gpt_embedding_size, prefix_length,
                                                                      clip_length, num_layers)
 
+    # @functools.lru_cache #FIXME
+    def get_dummy_token(self, batch_size: int, device: torch.device) -> torch.Tensor:
+        """Create a dummy token for the start of the caption.
+
+        Args:
+            batch_size (int): The batch size.
+            device (torch.device): The device to use.
+
+        Returns:
+            torch.Tensor: The dummy token.
+        """
+        return torch.zeros(
+            batch_size, self.prefix_length, dtype=torch.int64, device=device
+        )
+
+    def forward(
+        self,
+        tokens: torch.Tensor,
+        prefix: torch.Tensor,
+        mask: torch.Tensor | None = None,
+        labels: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """The forward pass of the ClipCap model.
+
+        Args:
+            tokens (torch.Tensor): The tokens to predict.
+            prefix (torch.Tensor): The prefix to use.
+            mask (torch.Tensor | None, optional): The mask to use. Defaults to None.
+            labels (torch.Tensor | None, optional): The labels to use. Defaults to None.
+
+        Returns:
+            torch.Tensor: The output of the model.
+        """
+        embedding_text = self.gpt.transformer.wte(tokens)
+        prefix_projections = self.clip_project(prefix).view(
+            -1, self.prefix_length, self.gpt_embedding_size
+        )
+        embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
+        if labels is not None:
+            dummy_token = self.get_dummy_token(tokens.shape[0], tokens.device)
+            labels = torch.cat((dummy_token, tokens), dim=1)
+
+        return self.gpt(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
 
 class ClipCaptionPrefix(ClipCaptionModel):
-
+    """The ClipCap model with a prefix."""
     def parameters(self, recurse: bool = True):
+        """The parameters of the model.
+
+        Args:
+            recurse (bool, optional): Whether to recurse. Defaults to True.
+
+        Returns:
+            Iterator[Parameter]: The parameters.
+        """
         return self.clip_project.parameters()
 
-    def train(self, mode: bool = True):
+    def train(self, mode: bool = True) -> "ClipCaptionPrefix":
+        """Train the model.
+
+        Args:
+            mode (bool, optional): Whether to train. Defaults to True.
+
+        Returns:
+            ClipCaptionPrefix: The model.
+        """
         super(ClipCaptionPrefix, self).train(mode)
         self.gpt.eval()
+
         return self
 
 
-def save_config(args: argparse.Namespace):
+def save_config(args: argparse.Namespace) -> None:
+    """Save the config to a file."""
     config = {}
     for key, item in args._get_kwargs():
         config[key] = item
@@ -349,7 +553,17 @@ def save_config(args: argparse.Namespace):
         json.dump(config, outfile)
 
 
-def load_model(config_path: str, epoch_or_latest: Union[str, int] = '_latest'):
+def load_model(config_path: str, epoch_or_latest: str | int = '_latest'
+               ) -> tuple[ClipCaptionModel, argparse.ArgumentParser]:
+    """Load the model from a config file.
+
+    Args:
+        config_path (str): The path to the config file.
+        epoch_or_latest (str | int, optional): The epoch to load. Defaults to '_latest'.
+
+    Returns:
+        tuple[ClipCaptionModel, argparse.ArgumentParser]: The model and the parser.
+    """
     with open(config_path) as f:
         config = json.load(f)
     parser = argparse.ArgumentParser()
@@ -367,12 +581,33 @@ def load_model(config_path: str, epoch_or_latest: Union[str, int] = '_latest'):
         model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
     else:
         print(f"{model_path} is not exist")
+
     return model, parser
 
 
-def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
-          lr: float = 2e-5, warmup_steps: int = 5000, output_dir: str = ".", output_prefix: str = ""):
+def train(
+    dataset: ClipCocoDataset,
+    model: ClipCaptionModel,
+    args: argparse.Namespace,
+    lr: float = 2e-5,
+    warmup_steps: int = 5000,
+    output_dir: str = ".",
+    output_prefix: str = ""
+    ) -> ClipCaptionModel:
+    """Train the model.
 
+    Args:
+        dataset (ClipCocoDataset): The dataset to use.
+        model (ClipCaptionModel): The model to train.
+        args (argparse.Namespace): The arguments.
+        lr (float, optional): The learning rate. Defaults to 2e-5.
+        warmup_steps (int, optional): The warmup steps. Defaults to 5000.
+        output_dir (str, optional): The output directory. Defaults to ".".
+        output_prefix (str, optional): The output prefix. Defaults to "".
+
+    Returns:
+        model: The trained model.
+    """
     device = torch.device('cuda:0')
     batch_size = args.bs
     epochs = args.epochs
@@ -413,6 +648,7 @@ def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
                 model.state_dict(),
                 os.path.join(output_dir, f"{output_prefix}-{epoch:03d}.pt"),
             )
+
     return model
 
 
