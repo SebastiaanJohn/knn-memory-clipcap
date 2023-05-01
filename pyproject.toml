@@ -3,8 +3,8 @@ ignore = ["C901", "E501", "E741", "W605"]
 select = ["E", "F", "I", "W", "N", "D", "S"]
 fixable = ["E", "F", "I", "W", "D"]
 
-# Same as Black.
-line-length = 88
+# Same as Flake8.
+line-length = 79
 
 # Assume Python 3.10.
 target-version = "py310"
