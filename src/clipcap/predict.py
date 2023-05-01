@@ -1,16 +1,12 @@
 """This file defines the prediction function for ClipCap."""
 
-
 import clip
 import numpy as np
 import PIL.Image
 import torch
-import torch.nn.functional as nnf
+import torch.nn.functional as F
 from torch import nn
-from transformers import (
-    GPT2LMHeadModel,
-    GPT2Tokenizer,
-)
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 
 WEIGHTS_PATHS = {
@@ -23,8 +19,13 @@ class Predictor:
     """Predictor class for ClipCap."""
 
     def __init__(self) -> None:
-        """Load the model into memory to make running multiple predictions efficient."""
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        """
+        Load the model into memory to make running multiple predictions
+        efficient.
+        """
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
         self.clip_model, self.preprocess = clip.load(
             "ViT-B/32", device=self.device, jit=False
         )
@@ -41,13 +42,17 @@ class Predictor:
             model = model.to(self.device)
             self.models[key] = model
 
-    def predict(self, image: str, model_name: str, use_beam_search: bool = True) -> str:
-        """Run a single prediction on the model.
+    def predict(
+        self, image: str, model_name: str, use_beam_search: bool = True
+    ) -> str:
+        """
+        Run a single prediction on the model.
 
         Args:
             image (str): The path to the image to caption.
             model_name (str): The name of the model to use.
-            use_beam_search (bool): Whether to use beam search or greedy search.
+            use_beam_search (bool): Whether to use beam search or greedy
+                search.
 
         Returns:
             str: The caption for the image.
@@ -59,22 +64,27 @@ class Predictor:
             prefix = self.clip_model.encode_image(image).to(
                 self.device, dtype=torch.float32
             )
-            prefix_embed = model.clip_project(prefix).reshape(1, self.prefix_length, -1)
+            prefix_embed = model.clip_project(prefix).reshape(
+                1, self.prefix_length, -1
+            )
         if use_beam_search:
             return generate_beam(model, self.tokenizer, embed=prefix_embed)[0]
         else:
             return generate2(model, self.tokenizer, embed=prefix_embed)
 
+
 class MLP(nn.Module):
     """A simple MLP."""
 
     def __init__(self, sizes: tuple[int, ...], bias: bool = True, act=nn.Tanh):
-        """Initialize the MLP.
+        """
+        Initialize the MLP.
 
         Args:
             sizes (Tuple[int, ...]): The sizes of the layers.
             bias (bool, optional): Whether to use bias. Defaults to True.
-            act (optional): The activation function to use. Defaults to nn.Tanh.
+            act (optional): The activation function to use. Defaults to
+                nn.Tanh.
         """
         super(MLP, self).__init__()
         layers = []
@@ -93,11 +103,13 @@ class ClipCaptionModel(nn.Module):
     """The model for ClipCap."""
 
     def __init__(self, prefix_length: int, prefix_size: int = 512):
-        """Initialize the model.
+        """
+        Initialize the model.
 
         Args:
             prefix_length (int): The length of the prefix.
-            prefix_size (int, optional): The size of the prefix. Defaults to 512.
+            prefix_size (int, optional): The size of the prefix. Defaults to
+                512.
         """
         super(ClipCaptionModel, self).__init__()
         self.prefix_length = prefix_length
@@ -117,8 +129,11 @@ class ClipCaptionModel(nn.Module):
             )
 
     # @functools.lru_cache #FIXME
-    def get_dummy_token(self, batch_size: int, device: torch.device) -> torch.Tensor:
-        """Create a dummy token for the start of the caption.
+    def get_dummy_token(
+        self, batch_size: int, device: torch.device
+    ) -> torch.Tensor:
+        """
+        Create a dummy token for the start of the caption.
 
         Args:
             batch_size (int): The batch size.
@@ -138,13 +153,16 @@ class ClipCaptionModel(nn.Module):
         mask: torch.Tensor | None = None,
         labels: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """The forward pass of the ClipCap model.
+        """
+        The forward pass of the ClipCap model.
 
         Args:
             tokens (torch.Tensor): The tokens to predict.
             prefix (torch.Tensor): The prefix to use.
-            mask (torch.Tensor | None, optional): The mask to use. Defaults to None.
-            labels (torch.Tensor | None, optional): The labels to use. Defaults to None.
+            mask (torch.Tensor | None, optional): The mask to use. Defaults to
+                None.
+            labels (torch.Tensor | None, optional): The labels to use.
+                Defaults to None.
 
         Returns:
             torch.Tensor: The output of the model.
@@ -160,15 +178,17 @@ class ClipCaptionModel(nn.Module):
             dummy_token = self.get_dummy_token(tokens.shape[0], tokens.device)
             labels = torch.cat((dummy_token, tokens), dim=1)
 
-        return self.gpt(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
-
-
+        return self.gpt(
+            inputs_embeds=embedding_cat, labels=labels, attention_mask=mask
+        )
 
 
 class ClipCaptionPrefix(ClipCaptionModel):
     """The ClipCap model with a prefix."""
+
     def parameters(self, recurse: bool = True):
-        """The parameters of the model.
+        """
+        The parameters of the model.
 
         Args:
             recurse (bool, optional): Whether to recurse. Defaults to True.
@@ -179,7 +199,8 @@ class ClipCaptionPrefix(ClipCaptionModel):
         return self.clip_project.parameters()
 
     def train(self, mode: bool = True) -> "ClipCaptionPrefix":
-        """Train the model.
+        """
+        Train the model.
 
         Args:
             mode (bool, optional): Whether to train. Defaults to True.
@@ -203,14 +224,16 @@ def generate_beam(
     temperature: float = 1.0,
     stop_token: str = ".",
 ):
-    """Beam search generation.
+    """
+    Beam search generation.
 
     Args:
         model (ClipCaptionModel): The model to use.
         tokenizer (GPT2Tokenizer): The tokenizer to use.
         beam_size (int, optional): Beam size. Defaults to 5.
         prompt (str | None, optional): The prompt to use. Defaults to None.
-        embed (torch.Tensor | None, optional): The embedding to use. Defaults to None.
+        embed (torch.Tensor | None, optional): The embedding to use. Defaults
+            to None.
         entry_length (int, optional): The length of the entry. Defaults to 67.
         temperature (float, optional): The temperature to use. Defaults to 1.0.
         stop_token (str, optional): The stop token to use. Defaults to ".".
@@ -239,13 +262,17 @@ def generate_beam(
         for _ in range(entry_length):
             outputs = model.gpt(inputs_embeds=generated)
             logits = outputs.logits
-            logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
+            logits = logits[:, -1, :] / (
+                temperature if temperature > 0 else 1.0
+            )
             logits = logits.softmax(-1).log()
 
             # First step: initialize scores and tokens
             if scores is None:
                 scores, next_tokens = logits.topk(beam_size, -1)
-                next_tokens, scores = next_tokens.permute(1, 0), scores.squeeze(0)
+                next_tokens, scores = next_tokens.permute(
+                    1, 0
+                ), scores.squeeze(0)
                 generated = generated.expand(beam_size, *generated.shape[1:])
                 if tokens is None:
                     tokens = next_tokens
@@ -260,9 +287,9 @@ def generate_beam(
                 scores_sum = scores[:, None] + logits
                 seq_lengths[~is_stopped] += 1
                 scores_sum_average = scores_sum / seq_lengths[:, None]
-                scores_sum_average, next_tokens = scores_sum_average.view(-1).topk(
-                    beam_size, -1
-                )
+                scores_sum_average, next_tokens = scores_sum_average.view(
+                    -1
+                ).topk(beam_size, -1)
                 next_tokens_source = next_tokens // scores_sum.shape[1]
                 seq_lengths = seq_lengths[next_tokens_source]
                 next_tokens = next_tokens % scores_sum.shape[1]
@@ -274,13 +301,15 @@ def generate_beam(
                 is_stopped = is_stopped[next_tokens_source]
 
             # Update input embeddings with the next tokens
-            next_token_embed = model.gpt.transformer.wte(next_tokens.squeeze()).view(
-                generated.shape[0], 1, -1
-            )
+            next_token_embed = model.gpt.transformer.wte(
+                next_tokens.squeeze()
+            ).view(generated.shape[0], 1, -1)
             generated = torch.cat((generated, next_token_embed), dim=1)
 
             # Check for stopping condition
-            is_stopped = is_stopped + next_tokens.eq(stop_token_index).squeeze()
+            is_stopped = (
+                is_stopped + next_tokens.eq(stop_token_index).squeeze()
+            )
             if is_stopped.all():
                 break
 
@@ -310,16 +339,20 @@ def generate2(
     top_p: float = 0.8,
     temperature: float = 1.0,
     stop_token: str = ".",
-):
-    """Greedy generation.
+) -> list[str]:
+    """
+    Greedy generation.
 
     Args:
         model (ClipCaptionModel): The model to use.
         tokenizer (GPT2Tokenizer): The tokenizer to use.
-        tokens (torch.Tensor | None, optional): The tokens to use. Defaults to None.
+        tokens (torch.Tensor | None, optional): The tokens to use. Defaults to
+            None.
         prompt (str | None, optional): The prompt to use. Defaults to None.
-        embed (torch.Tensor | None, optional): The embedding to use. Defaults to None.
-        entry_count (int, optional): The number of entries to generate. Defaults to 1.
+        embed (torch.Tensor | None, optional): The embedding to use. Defaults
+            to None.
+        entry_count (int, optional): The number of entries to generate.
+            Defaults to 1.
         entry_length (int, optional): The length of the entry. Defaults to 67.
         temperature (float, optional): The temperature to use. Defaults to 1.0.
         top_p (float, optional): The top p to use. Defaults to 0.8.
@@ -351,12 +384,16 @@ def generate2(
                 # Get the logits from the model
                 outputs = model.gpt(inputs_embeds=generated)
                 logits = outputs.logits
-                logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
+                logits = logits[:, -1, :] / (
+                    temperature if temperature > 0 else 1.0
+                )
 
                 # Sort logits and calculate cumulative probabilities
-                sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+                sorted_logits, sorted_indices = torch.sort(
+                    logits, descending=True
+                )
                 cumulative_probs = torch.cumsum(
-                    nnf.softmax(sorted_logits, dim=-1), dim=-1
+                    F.softmax(sorted_logits, dim=-1), dim=-1
                 )
 
                 # Remove tokens with cumulative probability > top_p
@@ -391,10 +428,12 @@ def generate2(
 
     return generated_list[0]
 
+
 if __name__ == "__main__":
     # Put the models in the models directory
     predictor = Predictor()
 
-    image_path = "images/COCO_val2014_000000060623.jpg"
+    # image_path = "images/COCO_val2014_000000060623.jpg"
+    image_path = "images/CONCEPTUAL_01.jpg"
     caption = predictor.predict(image_path, model_name="coco")
     print(caption)

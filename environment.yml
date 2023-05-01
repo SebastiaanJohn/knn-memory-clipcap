@@ -7,8 +7,9 @@ channels:
 dependencies:
   - python=3.10.8
   - pip=23.0.1
-  - pytorch=2.0.0
   - pytorch-cuda=11.8
+  - pytorch=2.0.0
+  - torchvision=0.15.1
   - pip:
     - ruff
     - transformers
