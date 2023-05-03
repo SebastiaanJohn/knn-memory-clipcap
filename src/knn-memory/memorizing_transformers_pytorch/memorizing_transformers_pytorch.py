@@ -15,19 +15,20 @@ from torch import einsum, nn
 
 
 # helper functions
-
 def identity(t):
     return t
 
 def exists(val):
     return val is not None
-
+    
+# array -> set
 def unique(arr):
     return list({el: True for el in arr}.keys())
 
 def default(val, d):
     return val if exists(val) else d
 
+# val becomes (val,)
 def cast_tuple(val, length = 1):
     return val if isinstance(val, tuple) else ((val,) * length)
 
@@ -38,8 +39,8 @@ def stable_softmax(t, dim = -1):
     t = t - t.amax(dim = dim, keepdim = True).detach()
     return F.softmax(t, dim = dim)
 
-# helper classes
-
+# helper classes:
+# residual block
 class PreNormResidual(nn.Module):
     def __init__(self, dim, fn):
         super().__init__()
@@ -56,7 +57,6 @@ class PreNormResidual(nn.Module):
         return (head + x, *tail)
 
 # t5 relative positional bias
-
 class T5RelativePositionBias(nn.Module):
     def __init__(
         self,
@@ -97,7 +97,6 @@ class T5RelativePositionBias(nn.Module):
         return bias * self.scale
 
 # feedforward
-
 class FeedForward(nn.Module):
     def __init__(self, dim, mult = 4, dropout = 0.):
         super().__init__()
@@ -112,7 +111,6 @@ class FeedForward(nn.Module):
         return self.net(x)
 
 # attention
-
 class Attention(nn.Module):
     def __init__(
         self,
@@ -175,7 +173,6 @@ class Attention(nn.Module):
         return self.to_out(out), new_xl_kv_memories
 
 # approximate nearest neighbor attention
-
 class KNNAttention(nn.Module):
     def __init__(
         self,
@@ -296,7 +293,6 @@ class KNNAttention(nn.Module):
         return out, new_xl_kv_memories
 
 # main class
-
 class MemorizingTransformer(nn.Module):
     def __init__(
         self,
@@ -304,18 +300,23 @@ class MemorizingTransformer(nn.Module):
         num_tokens,
         dim,
         depth,
+        # dimension per attention head
         dim_head = 64,
         heads = 8,
+        # gets a value later on
         knn_attn_heads = None,
         attn_dropout = 0.,
         ff_mult = 4,
         ff_dropout = 0.,
+        # user input
         memorizing_layers = None,
         max_knn_memories = 250000,
         num_retrieved_memories = 32,
+        # sos: start of sentence, eos: end of sentence
         clear_memories_on_sos_token_id = None,
         clear_memories_on_eos_token_id = None,
         knn_memories_directory = DEFAULT_KNN_MEMORY_MEMMAP_DIRECTORY,
+        # let a layer look at the knn memory this many layers down
         shift_knn_memories_down = 0.,
         pad_id = 0,
         xl_max_memories = 0,
@@ -327,58 +328,65 @@ class MemorizingTransformer(nn.Module):
         self.token_emb = nn.Embedding(num_tokens, dim)
         self.pad_id = pad_id
 
+        #block_wrapper will behave like PreNormResidual (residual block forward)
         block_wrapper = partial(PreNormResidual, dim)
         valid_layers = set(range(1, depth + 1))
 
+        # default KNN attention layer to midpoint of transformer
         memorizing_layers = default(memorizing_layers, (depth // 2,)) # default KNN attention layer to midpoint of transformer
-        memorizing_layers = cast_tuple(memorizing_layers)
+        memorizing_layers = cast_tuple(memorizing_layers)# only save valid memorizing layers
+        # only save valid memorizing layers
         memorizing_layers = tuple(filter(lambda i: i in valid_layers, memorizing_layers))
 
         self.dim_head = dim_head
-
+        # ?
         knn_attn_heads = default(knn_attn_heads, heads)
 
         # xl memory hyperparameter
-
         if xl_max_memories > 0:
             xl_memory_layers = default(xl_memory_layers, tuple(range(1, depth + 1)))
             xl_memory_layers = unique(xl_memory_layers)
             self.xl_memory_layers = tuple(filter(lambda i: i in valid_layers, xl_memory_layers))
             self.num_xl_memory_layers = len(self.xl_memory_layers)
+        # the default case
         else:
             self.xl_memory_layers = tuple()
             self.num_xl_memory_layers = 0
 
-        # knn memory hyperparameters
-
+        # knn memory hyperparameters:
+        # max memory size
         self.max_knn_memories = max_knn_memories
         self.knn_memories_directory = knn_memories_directory
+        # returns set of memorizing layers
         self.memorizing_layers = unique(memorizing_layers)
+        # number of memorizing layers
         self.num_memory_layers = len(memorizing_layers)
 
+        # memory clearing on SoS token with id 1
         self.clear_memories_on_sos_token_id = clear_memories_on_sos_token_id
         self.clear_memories_on_eos_token_id = clear_memories_on_eos_token_id
 
         # relative positional bias
-
         self.rel_pos_bias = T5RelativePositionBias(scale = dim_head ** 0.5, heads = heads)
         self.knn_rel_pos_bias = T5RelativePositionBias(scale = dim_head ** 0.5, heads = heads)
 
         # layers
-
         self.layers = nn.ModuleList([])
         for idx in range(depth):
             layer_num = idx + 1
-
+            # true or false: use xl memory and KNN-attention
             use_xl_memories = layer_num in self.xl_memory_layers
             use_knn_attention = layer_num in memorizing_layers
+            # 0 or user-given number
             xl_max_memories_layer = 0 if not use_xl_memories else xl_max_memories
 
             if use_knn_attention:
                 attn = KNNAttention(dim = dim, dim_head = dim_head, heads = knn_attn_heads, dropout = attn_dropout, num_retrieved_memories = num_retrieved_memories, xl_max_memories = xl_max_memories_layer)
             else:
+                # normal attention
                 attn = Attention(dim = dim, dim_head = dim_head, heads = heads, dropout = attn_dropout, xl_max_memories = xl_max_memories_layer)
-
+            
+            # attention and ff layers
             self.layers.append(nn.ModuleList([
                 block_wrapper(attn),
                 block_wrapper(FeedForward(dim = dim, mult = ff_mult, dropout = ff_dropout)),
@@ -386,19 +394,16 @@ class MemorizingTransformer(nn.Module):
 
         # memory layer shifting
         # from a little known paper https://arxiv.org/abs/2012.15688
-
         self.shift_knn_memories_down = shift_knn_memories_down
         self.shift_xl_memories_down = shift_xl_memories_down
 
-        # to logits
-
+        # output to logits
         self.to_logits = nn.Sequential(
             nn.LayerNorm(dim),
             nn.Linear(dim, num_tokens)
         )
 
         # knn memories init
-
         self.knn_mem_kwargs = dict(
             dim = self.dim_head,
             max_memories = self.max_knn_memories,
@@ -441,7 +446,7 @@ class MemorizingTransformer(nn.Module):
         if len(batch_indices_to_clear) == 0:
             return
 
-        knn_memories.clear_memory(batch_indices_to_clear)
+        self.knn_memories.clear_memory(batch_indices_to_clear)
 
     def forward(
         self,
