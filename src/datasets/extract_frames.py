@@ -8,7 +8,6 @@ import subprocess
 from pathlib import Path
 from pprint import pformat
 
-import pandas as pd
 from joblib import Parallel, delayed
 
 
@@ -101,27 +100,26 @@ def main(args: argparse.Namespace) -> None:
             f"-qscale:v 2"
         )
 
-    df = pd.read_csv(args.input_file, header=None)
-    logging.info(f"Loaded input file {args.input_file} with {len(df)} videos")
+    video_files = [video for video in args.root.glob("*.mp4")]
+    logging.info(f"Loaded {len(video_files)} videos from {args.root}")
 
-    if not args.dirname.is_dir():
-        logging.info(f"Creating directory {args.dirname}...")
-        args.dirname.mkdir(parents=True, exist_ok=True)
+    out_dir = args.root.parent / "frames"
 
     logging.info("Dumping frames...")
     ext = Path(args.frame_format).suffix
+    logging.info(ext)
 
     status = Parallel(n_jobs=args.n_jobs, verbose=args.verbose)(
         delayed(dump_wrapper)(
-            i, args.dirname, args.frame_format, args.filters, args.root, ext
+            video_id, out_dir, args.frame_format, args.filters, ext
         )
-        for i in df.loc[:, 0]
+        for video_id in video_files
     )
 
     logging.info("Dumping report")
     logging.info("Creating summary file...")
 
-    with Path.open(args.summary, "w") as fid:
+    with Path.open(out_dir.parent / "summary.csv", "w", newline="") as fid:
         fid.write("path,successful_frame_extraction,num_frames\n")
         for i in status:
             fid.write(f"{i[0]},{i[1]},{i[2]}\n")
@@ -137,13 +135,12 @@ if __name__ == "__main__":
         )
     )
     parser.add_argument(
-        "-i",
-        "--input-file",
+        "-r",
+        "--root",
+        type=Path,
         required=True,
-        help="CSV file with list of videos to process.",
+        help="The root directory containing the videos.",
     )
-    parser.add_argument("-o", "--dirname", type=Path, help="Folder to allocate frames")
-    parser.add_argument("-s", "--summary", help="CSV with report")
     parser.add_argument(
         "-f",
         "--frame-format",
@@ -151,13 +148,6 @@ if __name__ == "__main__":
         help="Format used for naming frames e.g. %%06d.jpg",
     )
     parser.add_argument("--filters", default="", help="Filters for ffmpeg")
-    parser.add_argument(
-        "-r",
-        "--root",
-        type=Path,
-        default=Path("rng-vg-nfmf"),
-        help="Path where the videos are located.",
-    )
 
     parser.add_argument(
         "--width", default=320, help="Frame width (only valid for empty filters)"

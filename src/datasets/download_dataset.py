@@ -40,7 +40,7 @@ def download_activitynet_videos(
         split (str, optional): Split to download. Defaults to "train".
     """
     # Create directory if it doesn't exist
-    path = f"{path}/ActivityNet_Captions/videos/{split}"
+    path = f"{path}/ActivityNet_Captions/{split}/videos"
     Path(path).mkdir(parents=True, exist_ok=True)
 
     # Download videos
