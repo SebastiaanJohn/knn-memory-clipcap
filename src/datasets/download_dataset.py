@@ -20,9 +20,9 @@ def download_video(video: dict, path: str) -> None:
     """
     try:
         yt = YouTube(video["video_path"], use_oauth=True, allow_oauth_cache=True)
-        yt.streams.filter(progressive=True, file_extension="mp4").order_by(
-            "resolution"
-        ).desc().first().download(path, f"{video['video_id']}.mp4")
+        yt.streams.filter(progressive=True, file_extension="mp4").filter(
+            res="360p"
+        ).first().download(path, f"{video['video_id']}.mp4")
     except VideoUnavailable:
         logging.warning(f"Video: ({video['video_id']}) is unavailable.")
 
@@ -61,7 +61,7 @@ def main(args) -> None:
         split=[
             f"train[{k}%:{k+split_percentage}%]"
             for k in range(0, 100, split_percentage)
-        ], # type: ignore
+        ],  # type: ignore
     )
 
     # Download videos
