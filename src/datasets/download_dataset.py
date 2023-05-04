@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from datasets import IterableDataset, load_dataset
-from pytube import YouTube
+from pytube.__main__ import YouTube
 from pytube.exceptions import VideoUnavailable
 from tqdm import tqdm
 from tqdm.contrib.concurrent import thread_map
@@ -63,6 +63,20 @@ def main(args) -> None:
             for k in range(0, 100, split_percentage)
         ],  # type: ignore
     )
+
+    # The first time we try to download a video, we need to enter an authorization
+    # code in the terminal. To connect to YouTube, we check if there is a cache
+    # available first.
+    if not Path("pytube/__cache__/tokens.json").is_file():
+        logging.info("No oauth cache found.")
+        logging.info("Connecting to YouTube...")
+        yt = YouTube(
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            use_oauth=True,
+            allow_oauth_cache=True,
+        )
+        yt.streams.filter(progressive=True, file_extension="mp4").filter(res="360p")
+        logging.info("Connected to YouTube.")
 
     # Download videos
     thread_map(

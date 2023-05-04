@@ -170,3 +170,4 @@ tensorboard.sh
 src/clipcap/models/*.pt
 data/*
 *.mp4
+src/datasets/pytube/__cache__
