@@ -1,6 +1,6 @@
 [tool.ruff]
 ignore = ["C901", "E501", "E741", "W605"]
-select = ["E", "F", "I", "W", "N", "D", "S"]
+select = ["E", "F", "I", "W", "N", "D", "S", "PTH"]
 fixable = ["E", "F", "I", "W", "D"]
 
 # Same as Flake8.
