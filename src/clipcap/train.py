@@ -37,8 +37,7 @@ class ClipCocoDataset(Dataset):
         gpt2_type: str = "gpt2",
         normalize_prefix: bool = False,
     ) -> None:
-        """
-        Initialize dataset.
+        """Initialize dataset.
 
         Args:
             data_path (str): The path to the data file.
@@ -103,8 +102,7 @@ class ClipCocoDataset(Dataset):
         )
 
     def pad_tokens(self, item: int) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Pad tokens to max_seq_len and create mask.
+        """Pad tokens to max_seq_len and create mask.
 
         Args:
             item (int): Index of the item.
@@ -150,8 +148,7 @@ class MLP(nn.Module):
     """A simple MLP."""
 
     def __init__(self, sizes: tuple[int, ...], bias: bool = True, act=nn.Tanh):
-        """
-        Initialize the MLP.
+        """Initialize the MLP.
 
         Args:
             sizes (Tuple[int, ...]): The sizes of the layers.
@@ -183,8 +180,7 @@ class MlpTransformer(nn.Module):
         act=nnf.relu,
         dropout: float = 0,
     ) -> None:
-        """
-        Initialize the MLP transformer.
+        """Initialize the MLP transformer.
 
         Args:
             in_dim (int): The input dimension.
@@ -224,8 +220,7 @@ class MultiHeadAttention(nn.Module):
         bias: bool = True,
         dropout: float = 0,
     ):
-        """
-        Initialize the Multi-Head Attention module.
+        """Initialize the Multi-Head Attention module.
 
         Args:
             dim_self (int): The dimension of the self-attention.
@@ -249,8 +244,7 @@ class MultiHeadAttention(nn.Module):
         y: torch.Tensor | None = None,
         mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Forward pass.
+        """Forward pass.
 
         Args:
             x (torch.Tensor): The input tensor.
@@ -302,8 +296,7 @@ class TransformerLayer(nn.Module):
         act=nnf.relu,
         norm_layer=nn.LayerNorm,
     ):
-        """
-        Initialize the transformer layer.
+        """Initialize the transformer layer.
 
         Args:
             dim_self (int): The dimension of the self-attention.
@@ -334,8 +327,7 @@ class TransformerLayer(nn.Module):
         y: torch.Tensor | None = None,
         mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Forward pass with attention.
+        """Forward pass with attention.
 
         Args:
             x (torch.Tensor): The input tensor.
@@ -359,8 +351,7 @@ class TransformerLayer(nn.Module):
         y: torch.Tensor | None = None,
         mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """
-        Forward pass.
+        """Forward pass.
 
         Args:
             x (torch.Tensor): The input tensor.
@@ -392,8 +383,7 @@ class Transformer(nn.Module):
         norm_layer=nn.LayerNorm,
         enc_dec: bool = False,
     ) -> None:
-        """
-        Initialize the transformer.
+        """Initialize the transformer.
 
         Args:
             dim_self (int): The dimension of the self-attention.
@@ -445,8 +435,7 @@ class Transformer(nn.Module):
         y: torch.Tensor | None = None,
         mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, list[torch.Tensor]]:
-        """
-        The forward pass with attention.
+        """The forward pass with attention.
 
         Args:
             x (torch.Tensor): The input tensor.
@@ -472,8 +461,7 @@ class Transformer(nn.Module):
         y: torch.Tensor | None = None,
         mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """
-        The forward pass.
+        """The forward pass.
 
         Args:
             x (torch.Tensor): The input tensor.
@@ -546,8 +534,7 @@ class ClipCaptionModel(nn.Module):
         num_layers: int = 8,
         mapping_type: MappingType = MappingType.MLP,
     ) -> None:
-        """
-        Initialize the model.
+        """Initialize the model.
 
         Args:
             prefix_length (int): The length of the prefix.
@@ -584,8 +571,7 @@ class ClipCaptionModel(nn.Module):
     def get_dummy_token(
         self, batch_size: int, device: torch.device
     ) -> torch.Tensor:
-        """
-        Create a dummy token for the start of the caption.
+        """Create a dummy token for the start of the caption.
 
         Args:
             batch_size (int): The batch size.
@@ -605,8 +591,7 @@ class ClipCaptionModel(nn.Module):
         mask: torch.Tensor | None = None,
         labels: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """
-        The forward pass of the ClipCap model.
+        """The forward pass of the ClipCap model.
 
         Args:
             tokens (torch.Tensor): The tokens to predict.
@@ -637,8 +622,7 @@ class ClipCaptionPrefix(ClipCaptionModel):
     """The ClipCap model with a prefix."""
 
     def parameters(self, recurse: bool = True):
-        """
-        The parameters of the model.
+        """The parameters of the model.
 
         Args:
             recurse (bool, optional): Whether to recurse. Defaults to True.
@@ -649,8 +633,7 @@ class ClipCaptionPrefix(ClipCaptionModel):
         return self.clip_project.parameters()
 
     def train(self, mode: bool = True) -> "ClipCaptionPrefix":
-        """
-        Train the model.
+        """Train the model.
 
         Args:
             mode (bool, optional): Whether to train. Defaults to True.
@@ -677,8 +660,7 @@ def save_config(args: argparse.Namespace) -> None:
 def load_model(
     config_path: str, epoch_or_latest: str | int = "_latest"
 ) -> tuple[ClipCaptionModel, argparse.ArgumentParser]:
-    """
-    Load the model from a config file.
+    """Load the model from a config file.
 
     Args:
         config_path (str): The path to the config file.
@@ -723,8 +705,7 @@ def train(
     output_dir: str = ".",
     output_prefix: str = "",
 ) -> ClipCaptionModel:
-    """
-    Train the model.
+    """Train the model.
 
     Args:
         dataset (ClipCocoDataset): The dataset to use.

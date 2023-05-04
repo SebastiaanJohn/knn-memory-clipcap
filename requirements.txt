@@ -15,3 +15,5 @@ einops_exts
 filelock
 joblib
 faiss-gpu
+pytube
+datasets

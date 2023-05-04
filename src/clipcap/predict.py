@@ -19,8 +19,7 @@ class Predictor:
     """Predictor class for ClipCap."""
 
     def __init__(self) -> None:
-        """
-        Load the model into memory to make running multiple predictions
+        """Load the model into memory to make running multiple predictions
         efficient.
         """
         self.device = torch.device(
@@ -45,8 +44,7 @@ class Predictor:
     def predict(
         self, image: str, model_name: str, use_beam_search: bool = True
     ) -> str:
-        """
-        Run a single prediction on the model.
+        """Run a single prediction on the model.
 
         Args:
             image (str): The path to the image to caption.
@@ -77,8 +75,7 @@ class MLP(nn.Module):
     """A simple MLP."""
 
     def __init__(self, sizes: tuple[int, ...], bias: bool = True, act=nn.Tanh):
-        """
-        Initialize the MLP.
+        """Initialize the MLP.
 
         Args:
             sizes (Tuple[int, ...]): The sizes of the layers.
@@ -103,8 +100,7 @@ class ClipCaptionModel(nn.Module):
     """The model for ClipCap."""
 
     def __init__(self, prefix_length: int, prefix_size: int = 512):
-        """
-        Initialize the model.
+        """Initialize the model.
 
         Args:
             prefix_length (int): The length of the prefix.
@@ -132,8 +128,7 @@ class ClipCaptionModel(nn.Module):
     def get_dummy_token(
         self, batch_size: int, device: torch.device
     ) -> torch.Tensor:
-        """
-        Create a dummy token for the start of the caption.
+        """Create a dummy token for the start of the caption.
 
         Args:
             batch_size (int): The batch size.
@@ -153,8 +148,7 @@ class ClipCaptionModel(nn.Module):
         mask: torch.Tensor | None = None,
         labels: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """
-        The forward pass of the ClipCap model.
+        """The forward pass of the ClipCap model.
 
         Args:
             tokens (torch.Tensor): The tokens to predict.
@@ -187,8 +181,7 @@ class ClipCaptionPrefix(ClipCaptionModel):
     """The ClipCap model with a prefix."""
 
     def parameters(self, recurse: bool = True):
-        """
-        The parameters of the model.
+        """The parameters of the model.
 
         Args:
             recurse (bool, optional): Whether to recurse. Defaults to True.
@@ -199,8 +192,7 @@ class ClipCaptionPrefix(ClipCaptionModel):
         return self.clip_project.parameters()
 
     def train(self, mode: bool = True) -> "ClipCaptionPrefix":
-        """
-        Train the model.
+        """Train the model.
 
         Args:
             mode (bool, optional): Whether to train. Defaults to True.
@@ -224,8 +216,7 @@ def generate_beam(
     temperature: float = 1.0,
     stop_token: str = ".",
 ):
-    """
-    Beam search generation.
+    """Beam search generation.
 
     Args:
         model (ClipCaptionModel): The model to use.
@@ -340,8 +331,7 @@ def generate2(
     temperature: float = 1.0,
     stop_token: str = ".",
 ) -> list[str]:
-    """
-    Greedy generation.
+    """Greedy generation.
 
     Args:
         model (ClipCaptionModel): The model to use.
