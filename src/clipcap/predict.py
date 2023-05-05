@@ -22,9 +22,7 @@ class Predictor:
         """Load the model into memory to make running multiple predictions
         efficient.
         """
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.clip_model, self.preprocess = clip.load(
             "ViT-B/32", device=self.device, jit=False
         )
@@ -41,9 +39,7 @@ class Predictor:
             model = model.to(self.device)
             self.models[key] = model
 
-    def predict(
-        self, image: str, model_name: str, use_beam_search: bool = True
-    ) -> str:
+    def predict(self, image: str, model_name: str, use_beam_search: bool = True) -> str:
         """Run a single prediction on the model.
 
         Args:
@@ -62,9 +58,7 @@ class Predictor:
             prefix = self.clip_model.encode_image(image).to(
                 self.device, dtype=torch.float32
             )
-            prefix_embed = model.clip_project(prefix).reshape(
-                1, self.prefix_length, -1
-            )
+            prefix_embed = model.clip_project(prefix).reshape(1, self.prefix_length, -1)
         if use_beam_search:
             return generate_beam(model, self.tokenizer, embed=prefix_embed)[0]
         else:
@@ -125,9 +119,7 @@ class ClipCaptionModel(nn.Module):
             )
 
     # @functools.lru_cache #FIXME
-    def get_dummy_token(
-        self, batch_size: int, device: torch.device
-    ) -> torch.Tensor:
+    def get_dummy_token(self, batch_size: int, device: torch.device) -> torch.Tensor:
         """Create a dummy token for the start of the caption.
 
         Args:
@@ -172,9 +164,7 @@ class ClipCaptionModel(nn.Module):
             dummy_token = self.get_dummy_token(tokens.shape[0], tokens.device)
             labels = torch.cat((dummy_token, tokens), dim=1)
 
-        return self.gpt(
-            inputs_embeds=embedding_cat, labels=labels, attention_mask=mask
-        )
+        return self.gpt(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
 
 
 class ClipCaptionPrefix(ClipCaptionModel):
@@ -253,17 +243,13 @@ def generate_beam(
         for _ in range(entry_length):
             outputs = model.gpt(inputs_embeds=generated)
             logits = outputs.logits
-            logits = logits[:, -1, :] / (
-                temperature if temperature > 0 else 1.0
-            )
+            logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
             logits = logits.softmax(-1).log()
 
             # First step: initialize scores and tokens
             if scores is None:
                 scores, next_tokens = logits.topk(beam_size, -1)
-                next_tokens, scores = next_tokens.permute(
-                    1, 0
-                ), scores.squeeze(0)
+                next_tokens, scores = next_tokens.permute(1, 0), scores.squeeze(0)
                 generated = generated.expand(beam_size, *generated.shape[1:])
                 if tokens is None:
                     tokens = next_tokens
@@ -278,9 +264,9 @@ def generate_beam(
                 scores_sum = scores[:, None] + logits
                 seq_lengths[~is_stopped] += 1
                 scores_sum_average = scores_sum / seq_lengths[:, None]
-                scores_sum_average, next_tokens = scores_sum_average.view(
-                    -1
-                ).topk(beam_size, -1)
+                scores_sum_average, next_tokens = scores_sum_average.view(-1).topk(
+                    beam_size, -1
+                )
                 next_tokens_source = next_tokens // scores_sum.shape[1]
                 seq_lengths = seq_lengths[next_tokens_source]
                 next_tokens = next_tokens % scores_sum.shape[1]
@@ -292,15 +278,13 @@ def generate_beam(
                 is_stopped = is_stopped[next_tokens_source]
 
             # Update input embeddings with the next tokens
-            next_token_embed = model.gpt.transformer.wte(
-                next_tokens.squeeze()
-            ).view(generated.shape[0], 1, -1)
+            next_token_embed = model.gpt.transformer.wte(next_tokens.squeeze()).view(
+                generated.shape[0], 1, -1
+            )
             generated = torch.cat((generated, next_token_embed), dim=1)
 
             # Check for stopping condition
-            is_stopped = (
-                is_stopped + next_tokens.eq(stop_token_index).squeeze()
-            )
+            is_stopped = is_stopped + next_tokens.eq(stop_token_index).squeeze()
             if is_stopped.all():
                 break
 
@@ -374,14 +358,10 @@ def generate2(
                 # Get the logits from the model
                 outputs = model.gpt(inputs_embeds=generated)
                 logits = outputs.logits
-                logits = logits[:, -1, :] / (
-                    temperature if temperature > 0 else 1.0
-                )
+                logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
 
                 # Sort logits and calculate cumulative probabilities
-                sorted_logits, sorted_indices = torch.sort(
-                    logits, descending=True
-                )
+                sorted_logits, sorted_indices = torch.sort(logits, descending=True)
                 cumulative_probs = torch.cumsum(
                     F.softmax(sorted_logits, dim=-1), dim=-1
                 )
