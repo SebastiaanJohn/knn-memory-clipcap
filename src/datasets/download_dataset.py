@@ -3,9 +3,10 @@
 import argparse
 import logging
 from pathlib import Path
+from typing import Iterable
 
-from datasets import IterableDataset, load_dataset
-from pytube.__main__ import YouTube
+from datasets import load_dataset
+from pytube import YouTube
 from pytube.exceptions import VideoUnavailable
 from tqdm import tqdm
 from tqdm.contrib.concurrent import thread_map
@@ -25,17 +26,19 @@ def download_video(video: dict, path: str) -> None:
         ).first().download(path, f"{video['video_id']}.mp4")
     except VideoUnavailable:
         logging.warning(f"Video: ({video['video_id']}) is unavailable.")
+    except KeyError:
+        logging.warning(f"Video: ({video['video_id']}) gives streamingData error.")
 
 
 def download_activitynet_videos(
-    dataset: IterableDataset,
+    dataset: Iterable,
     path: str = "./data",
     split: str = "train",
 ) -> None:
     """Download ActivityNet Captions videos from YouTube.
 
     Args:
-        dataset (datasets.IterableDataset): Dataset to download videos from.
+        dataset (Iterable): Dataset to download videos from.
         path (str, optional): Path to save videos. Defaults to "./data".
         split (str, optional): Split to download. Defaults to "train".
     """
@@ -43,7 +46,6 @@ def download_activitynet_videos(
     path = f"{path}/ActivityNet_Captions/{split}/videos"
     Path(path).mkdir(parents=True, exist_ok=True)
 
-    # Download videos
     for video in tqdm(dataset):
         if Path(f"{path}/{video['video_id']}.mp4").exists():
             continue
@@ -59,26 +61,11 @@ def main(args) -> None:
     datasets = load_dataset(
         "Leyo/ActivityNet_Captions",
         split=[
-            f"train[{k}%:{k+split_percentage}%]"
+            f"{args.split}[{k}%:{k+split_percentage}%]"
             for k in range(0, 100, split_percentage)
         ],  # type: ignore
     )
 
-    # The first time we try to download a video, we need to enter an authorization
-    # code in the terminal. To connect to YouTube, we check if there is a cache
-    # available first.
-    if not Path("pytube/__cache__/tokens.json").is_file():
-        logging.info("No oauth cache found.")
-        logging.info("Connecting to YouTube...")
-        yt = YouTube(
-            "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            use_oauth=True,
-            allow_oauth_cache=True,
-        )
-        yt.streams.filter(progressive=True, file_extension="mp4").filter(res="360p")
-        logging.info("Connected to YouTube.")
-
-    # Download videos
     thread_map(
         lambda dataset: download_activitynet_videos(
             dataset, path=args.path, split=args.split

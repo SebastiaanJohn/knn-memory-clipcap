@@ -16,3 +16,4 @@ filelock
 joblib
 faiss-gpu
 datasets
+pytube
