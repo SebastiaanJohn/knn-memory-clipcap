@@ -11,48 +11,54 @@ import torch
 from datasets import Dataset, IterableDataset, load_dataset
 from PIL import Image
 from tqdm import tqdm
-from transformers import (
-    GPT2Tokenizer,
-)
+from transformers import GPT2Tokenizer
 
 
 def parse_activitynet(
-    dataset: IterableDataset, frames_dir: str, clip_model_type: str,  gpt_type: str = "gpt2",
+    dataset: IterableDataset,
+    frames_dir: str,
+    clip_model_type: str,
+    gpt_type: str = "gpt2",
 ) -> Dataset:
     """Parse ActivityNet Captions dataset.
 
-    We have a dataset of videos (folder of image frames), where each video has multiple captions.
-    We want to create a new dataset consititng of the videos seperated by caption,
-    and each caption video should have their frames embedded by clip
-
-    Output example:
-        [
-            {
-                "video_id": "v-1",
-                "en_caption": torch.tensor([
-                    token1_id,
-                    token2_id,
-                    ...
-                ])
-                "frames": torch.tensor([
-                    frame1_embedding,
-                    frame2_embedding,
-                    ...
-                ])
-            },
-        ]
+    Converts a dataset of videos to a pre-processed dataset of video clips. In
+    the original dataset, each video has multiple captions and the videos are
+    stored as frames in a directory. In the new dataset, each video clip has
+    one caption, and the video clips are stored as a tensor of frame
+    embeddings.
 
     Args:
-        dataset (IterableDataset): The ActivityNet Captions dataset
-        frames_dir (str): Path to the folder containing the frames
-        clip_model_type (str): Name of the clip model to use
+        dataset (IterableDataset): The ActivityNet Captions dataset.
+        frames_dir (str): Path to the folder containing the frames.
+        clip_model_type (str): Name of the clip model to use.
+        gpt_type (str, optional): Name of the GPT model to use. Defaults to
+            "gpt2".
 
     Returns:
-        Dataset: Dataset of videos with embedded frames
+        Dataset: Dataset of video clip frame embeddings with their captions.
+            Example:
+            [
+                {
+                    "video_id": "v_xxxxxxxxxx",
+                    "en_caption": torch.tensor([
+                        token1_id,
+                        token2_id,
+                        ...
+                    ])
+                    "frames": torch.tensor([
+                        frame1_embedding,
+                        frame2_embedding,
+                        ...
+                    ])
+                },
+                ...
+            ]
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = torch.device("mps")
-    clip_model, preprocess = clip.load(clip_model_type, device=device, jit=False)
+    clip_model, preprocess = clip.load(
+        clip_model_type, device=device, jit=False
+    )
     tokenizer = GPT2Tokenizer.from_pretrained(gpt_type, pad_token="[PAD]")
 
     new_dataset = []
@@ -65,35 +71,43 @@ def parse_activitynet(
             continue
 
         for start, end, caption in zip(
-            entry["captions_starts"], entry["captions_ends"], entry["en_captions"]
+            entry["captions_starts"],
+            entry["captions_ends"],
+            entry["en_captions"],
         ):
+            # Get the start and end frame numbers.
             start_frame = int(start * 5) + 1
             end_frame = int(end * 5) + 1
 
-            while not (Path(video_frames_dir) / f"{end_frame:06d}.jpg").exists():
+            while not (
+                Path(video_frames_dir) / f"{end_frame:06d}.jpg"
+            ).exists():
                 end_frame -= 1
 
+            # Compute the frame embeddings.
             embeddings = []
             for frame_number in range(start_frame, end_frame + 1):
                 frame_path = Path(video_frames_dir) / f"{frame_number:06d}.jpg"
 
                 image = io.imread(frame_path)
-                image = preprocess(Image.fromarray(image)).unsqueeze(0).to(device)
+                image = (
+                    preprocess(Image.fromarray(image)).unsqueeze(0).to(device)
+                )
                 with torch.no_grad():
                     embedding = clip_model.encode_image(image).cpu()
                     embeddings.append(embedding)
 
+            # Add the video clip to the new dataset.
             new_dataset.append(
                 {
                     "video_id": video_id,
                     "en_caption": tokenizer.encode(
-                        caption,
-                        return_tensors="pt"
+                        caption, return_tensors="pt"
                     ),
                     "frames": torch.cat(embeddings, dim=0),
                 }
             )
-    
+
     # Return the new dataset.
     new_dataset = Dataset.from_list(new_dataset)
     new_dataset.pad_token_id = tokenizer.pad_token_id
@@ -105,18 +119,20 @@ def main(args: argparse.Namespace) -> None:
     logging.info(f"Computing clip embeddings for {args.split} split")
 
     dataset = load_dataset(
-        "Leyo/ActivityNet_Captions",
-        split=f"{args.split}[0:{args.subset}]",
+        "Leyo/ActivityNet_Captions", split=f"{args.split}[0:{args.subset}]"
     )
 
-    new_dataset = parse_activitynet(dataset, args.frames_dir, args.clip_model_type)
+    new_dataset = parse_activitynet(
+        dataset, args.frames_dir, args.clip_model_type
+    )
 
     # save dataset in parent folder of frames_dir
     output_dir = Path(args.frames_dir).parent
 
     clip_model_name = args.clip_model_type.replace("/", "_")
     with Path.open(
-        output_dir / f"activitynet_{args.split}_{clip_model_name}_{args.subset}.pkl",
+        output_dir
+        / f"activitynet_{args.split}_{clip_model_name}_{args.subset}.pkl",
         "wb",
     ) as f:
         pickle.dump(new_dataset, f)
@@ -132,25 +148,19 @@ if __name__ == "__main__":
         default="ViT-B/32",
         choices=("RN50", "RN101", "RN50x4", "ViT-B/32"),
     )
+    parser.add_argument("--frames_dir", required=True)
     parser.add_argument(
-        "--frames_dir",
-        required=True,
+        "--split", default="train", choices=("train", "validation", "test")
     )
-    parser.add_argument(
-        "--split",
-        default="train",
-        choices=("train", "validation", "test"),
-    )
-    parser.add_argument(
-        "--subset",
-        default=300,
-        type=int,
-    )
+    parser.add_argument("--subset", default=300, type=int)
 
     args = parser.parse_args()
 
     logging.basicConfig(
-        format="%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d]: %(message)s",
+        format=(
+            "%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d]: "
+            "%(message)s"
+        )
     )
 
     main(args)

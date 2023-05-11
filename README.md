@@ -14,11 +14,17 @@ Download the videos in the training and validation set by running:
 ```bash
 cd data/
 
+wget "https://drive.google.com/u/0/uc?id=1EwCUfeeEfdaoAZ6CWbehutlf0chtgIJG&export=download&confirm=t" -O activitynet_train_ViT-B_32_300.pkl
+wget "https://drive.google.com/u/0/uc?id=1lsgiXG5leaXl4eU3fym4bKPgy6yjT7mk&export=download&confirm=t" -O activitynet_validation_ViT-B_32_100.pkl
+
 wget "https://drive.google.com/u/0/uc?id=1eIRY9AUTmP_4hKRcUb_3mN6jzP4YxBQu&export=download&confirm=t" -O train_subset_300.zip
 wget "https://drive.google.com/u/0/uc?id=1YCrqpjox0ePmt-aFJ6tvRZx0Mc0oKBCi&export=download&confirm=t" -O validation_subset_100.zip
 
 unzip train_subset_300.zip
 unzip validation_subset_100.zip
+
+rm train_subset_300.zip
+rm validation_subset_100.zip
 ```
 
 ```bash
