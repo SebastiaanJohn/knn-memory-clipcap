@@ -381,23 +381,30 @@ def train(
     Returns:
         model: The trained model.
     """
-    device = torch.device("cuda:0")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     batch_size = args.bs
     epochs = args.epochs
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
     model = model.to(device)
     model.train()
+
     optimizer = AdamW(model.parameters(), lr=lr)
+
     train_dataloader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True, drop_last=True
     )
+
     scheduler = get_linear_schedule_with_warmup(
         optimizer,
         num_warmup_steps=warmup_steps,
         num_training_steps=epochs * len(train_dataloader),
     )
+
     save_config(args)
+
     for epoch in range(epochs):
         print(f">>> Training epoch {epoch}")
         sys.stdout.flush()

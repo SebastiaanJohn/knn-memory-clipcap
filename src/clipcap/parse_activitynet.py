@@ -11,10 +11,13 @@ import torch
 from datasets import Dataset, IterableDataset, load_dataset
 from PIL import Image
 from tqdm import tqdm
+from transformers import (
+    GPT2Tokenizer,
+)
 
 
 def parse_activitynet(
-    dataset: IterableDataset, frames_dir: str, clip_model_type: str
+    dataset: IterableDataset, frames_dir: str, clip_model_type: str,  gpt_type: str = "gpt2",
 ) -> Dataset:
     """Parse ActivityNet Captions dataset.
 
@@ -26,8 +29,16 @@ def parse_activitynet(
         [
             {
                 "video_id": "v-1",
-                "en_caption": "caption 1",
-                "frames": torch.tensor([frame1_embedding, frame2_embedding, ...])
+                "en_caption": torch.tensor([
+                    token1_id,
+                    token2_id,
+                    ...
+                ])
+                "frames": torch.tensor([
+                    frame1_embedding,
+                    frame2_embedding,
+                    ...
+                ])
             },
         ]
 
@@ -40,7 +51,9 @@ def parse_activitynet(
         Dataset: Dataset of videos with embedded frames
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("mps")
     clip_model, preprocess = clip.load(clip_model_type, device=device, jit=False)
+    tokenizer = GPT2Tokenizer.from_pretrained(gpt_type, pad_token="[PAD]")
 
     new_dataset = []
     for entry in tqdm(dataset, desc="Parsing dataset"):
@@ -73,12 +86,18 @@ def parse_activitynet(
             new_dataset.append(
                 {
                     "video_id": video_id,
-                    "en_caption": caption,
+                    "en_caption": tokenizer.encode(
+                        caption,
+                        return_tensors="pt"
+                    ),
                     "frames": torch.cat(embeddings, dim=0),
                 }
             )
-
-    return Dataset.from_list(new_dataset)
+    
+    # Return the new dataset.
+    new_dataset = Dataset.from_list(new_dataset)
+    new_dataset.pad_token_id = tokenizer.pad_token_id
+    return new_dataset
 
 
 def main(args: argparse.Namespace) -> None:
