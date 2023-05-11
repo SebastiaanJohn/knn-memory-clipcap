@@ -40,7 +40,6 @@ def parse_activitynet(
         Dataset: Dataset of videos with embedded frames
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = torch.device("mps")
     clip_model, preprocess = clip.load(clip_model_type, device=device, jit=False)
 
     new_dataset = []
