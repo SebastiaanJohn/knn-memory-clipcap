@@ -17,6 +17,7 @@ def create_subset(
     Args:
         dataset (IterableDataset): The dataset to split the frames directory for.
         source_dir (str): The directory containing the frames.
+        args (argparse.Namespace): The command line arguments.
     """
     output_dir = f"{args.split}_subset_{args.subset_size}"
     Path(source_dir).parent.mkdir(parents=True, exist_ok=True)
