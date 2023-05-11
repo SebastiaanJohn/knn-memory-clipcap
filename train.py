@@ -5,9 +5,6 @@ import json
 import os
 import pickle
 import sys
-from enum import Enum
-
-from memorizing_transformers_pytorch import MemorizingTransformer
 
 import torch
 import torch.nn as nn
@@ -20,6 +17,8 @@ from transformers import (
     GPT2Tokenizer,
     get_linear_schedule_with_warmup,
 )
+
+from memorizing_transformers_pytorch import MemorizingTransformer
 
 
 class ClipCocoDataset(Dataset):
@@ -76,9 +75,7 @@ class ClipCocoDataset(Dataset):
                     )
                 )
                 self.caption2embedding.append(caption["clip_embedding"])
-                max_seq_len = max(
-                    max_seq_len, self.captions_tokens[-1].shape[0]
-                )
+                max_seq_len = max(max_seq_len, self.captions_tokens[-1].shape[0])
             # self.max_seq_len = max_seq_len
             with open(f"{data_path[:-4]}_tokens.pkl", "wb") as f:
                 pickle.dump(
@@ -108,9 +105,7 @@ class ClipCocoDataset(Dataset):
         tokens = self.captions_tokens[item]
         padding = self.max_seq_len - tokens.shape[0]
         if padding > 0:
-            tokens = torch.cat(
-                (tokens, torch.zeros(padding, dtype=torch.int64) - 1)
-            )
+            tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
             self.captions_tokens[item] = tokens
         elif padding < 0:
             tokens = tokens[: self.max_seq_len]
@@ -157,27 +152,25 @@ class MemoryTransformer(nn.Module):
     """A memorizing transformer module."""
 
     def __init__(
-        self,
-        dim_self: int,
-        num_heads: int,
-        num_layers: int,
-        batch_size: int
+        self, dim_self: int, num_heads: int, num_layers: int, batch_size: int
     ) -> None:
         """Initialize the memorizing transformer."""
         super(MemoryTransformer, self).__init__()
         self.batch_size = batch_size
         self.model = MemorizingTransformer(
-            dim = dim_self,                     # dimension
-            dim_head = dim_self // num_heads,   # dimension per attention head
-            depth = num_layers,                 # number of layers
-            memorizing_layers = (4, 5),         # which layers to have ANN memories
-            max_knn_memories = 64000,           # maximum ANN memories to keep
-            num_retrieved_memories = 32,        # number of ANN memories to retrieve
+            dim=dim_self,  # dimension
+            dim_head=dim_self // num_heads,  # dimension per attention head
+            depth=num_layers,  # number of layers
+            memorizing_layers=(4, 5),  # which layers to have ANN memories
+            max_knn_memories=64000,  # maximum ANN memories to keep
+            num_retrieved_memories=32,  # number of ANN memories to retrieve
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """The forward pass."""
-        with self.model.knn_memories_context(batch_size = self.batch_size) as knn_memories:
+        with self.model.knn_memories_context(
+            batch_size=self.batch_size
+        ) as knn_memories:
             return self.model(x, knn_memories)
 
 
@@ -259,9 +252,7 @@ class ClipCaptionModel(nn.Module):
         )
 
     # @functools.lru_cache #FIXME
-    def get_dummy_token(
-        self, batch_size: int, device: torch.device
-    ) -> torch.Tensor:
+    def get_dummy_token(self, batch_size: int, device: torch.device) -> torch.Tensor:
         """Create a dummy token for the start of the caption.
 
         Args:
@@ -304,9 +295,7 @@ class ClipCaptionModel(nn.Module):
             dummy_token = self.get_dummy_token(tokens.shape[0], tokens.device)
             labels = torch.cat((dummy_token, tokens), dim=1)
 
-        return self.gpt(
-            inputs_embeds=embedding_cat, labels=labels, attention_mask=mask
-        )
+        return self.gpt(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
 
 
 class ClipCaptionPrefix(ClipCaptionModel):
@@ -369,18 +358,14 @@ def load_model(
     args = parser.parse_args()
     if type(epoch_or_latest) is int:
         epoch_or_latest = f"-{epoch_or_latest:03d}"
-    model_path = os.path.join(
-        args.out_dir, f"{args.prefix}{epoch_or_latest}.pt"
-    )
+    model_path = os.path.join(args.out_dir, f"{args.prefix}{epoch_or_latest}.pt")
     if args.only_prefix:
         model = ClipCaptionPrefix(args.prefix_length)
     else:
         model = ClipCaptionModel(args.prefix_length)
     if os.path.isfile(model_path):
         print(f"loading model from {model_path}")
-        model.load_state_dict(
-            torch.load(model_path, map_location=torch.device("cpu"))
-        )
+        model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
     else:
         print(f"{model_path} is not exist")
 
@@ -480,9 +465,7 @@ def main() -> None:
     parser.add_argument("--prefix_length", type=int, default=10)
     parser.add_argument("--prefix_length_clip", type=int, default=10)
     parser.add_argument("--bs", type=int, default=40)
-    parser.add_argument(
-        "--only_prefix", dest="only_prefix", action="store_true"
-    )
+    parser.add_argument("--only_prefix", dest="only_prefix", action="store_true")
     parser.add_argument("--num_layers", type=int, default=8)
     parser.add_argument("--is_rn", dest="is_rn", action="store_true")
     parser.add_argument(
@@ -500,7 +483,7 @@ def main() -> None:
     if args.only_prefix:
         model = ClipCaptionPrefix(
             prefix_length,
-            batch_size = args.bs,
+            batch_size=args.bs,
             clip_length=args.prefix_length_clip,
             prefix_size=prefix_dim,
             num_layers=args.num_layers,
@@ -509,7 +492,7 @@ def main() -> None:
     else:
         model = ClipCaptionModel(
             prefix_length,
-            batch_size = args.bs,
+            batch_size=args.bs,
             clip_length=args.prefix_length_clip,
             prefix_size=prefix_dim,
             num_layers=args.num_layers,
