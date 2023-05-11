@@ -124,7 +124,21 @@ class ClipCocoDataset(Dataset):
         return len(self.captions_tokens)
 
     def __getitem__(self, item: int) -> tuple[torch.Tensor, ...]:
-        """Get item from the dataset."""
+        """Get item from the dataset.
+
+        Args:
+            item (int): Index of the video clip frame.
+
+        Returns:
+            Tuple containing:
+                tokens (torch.Tensor): Tokens of the caption.
+                    Shape: [max_seq_len]
+                mask (torch.Tensor): Mask of the caption.
+                    Shape: [max_seq_len]
+                prefix (torch.Tensor): CLIP embeddings of a single frame of a
+                    singel video clip.
+                    Shape: [512]
+        """
         tokens, mask = self.pad_tokens(item)
         prefix = self.prefixes[self.caption2embedding[item]]
         if self.normalize_prefix:
