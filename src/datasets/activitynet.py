@@ -7,6 +7,8 @@ from pathlib import Path
 
 import torch
 from torch.utils.data import Dataset
+from tqdm import tqdm
+from transformers import GPT2Tokenizer
 
 
 class ActivityNetDataset(Dataset):
@@ -21,8 +23,13 @@ class ActivityNetDataset(Dataset):
             batch_size (int): The batch size. Must be the same as the batch
                 size used for the DataLoader.
         """
-        with Path.open(data_path, "rb") as f:
+        self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2", pad_token="[PAD]")
+        self.data_path = Path(data_path)
+        with Path.open(self.data_path, "rb") as f:
             self.dataset = pickle.load(f)
+
+        # Use subset of dataset for debugging. self.dataset is a HuggingFace dataset.
+        # self.dataset = self.dataset.select(range(6))
 
         logging.info(
             f"There are {len(self.dataset)} video clips in the dataset."
@@ -46,19 +53,23 @@ class ActivityNetDataset(Dataset):
 
         # Create horizontal stack of frames.
         current_video_clip_idx = 0
-        for i in range(self.batching_steps):
+        frame_idx = 0
+        for i in tqdm(range(self.batching_steps)):
             for j in range(self.batch_size):
-                if self.horizontal_stack[j][i] == (None, None):
-                    continue
-
                 # Get next video clip if current one is exhausted.
-                video_clip = self.dataset[current_video_clip_idx]
-                for k, _frame in enumerate(video_clip["frames"]):
-                    self.horizontal_stack[j][i + k] = (
-                        current_video_clip_idx,
-                        k,
-                    )
-                current_video_clip_idx += 1
+                if frame_idx >= len(self.dataset[current_video_clip_idx]["frames"]):
+                    current_video_clip_idx += 1
+                    frame_idx = 0
+
+                if current_video_clip_idx >= len(self.dataset):
+                    # If all video clips have been processed, stop filling the stack
+                    break
+
+                self.horizontal_stack[j][i] = (
+                    current_video_clip_idx,
+                    frame_idx,
+                )
+                frame_idx += 1
 
         # Get the longest caption length within the current batch.
         self.max_caption_len = []
@@ -67,12 +78,12 @@ class ActivityNetDataset(Dataset):
             for j in range(self.batch_size):
                 if self.horizontal_stack[j][i][0] is None:
                     continue
-                    
+
                 video_clip = self.dataset[self.horizontal_stack[j][i][0]]
                 frame_idx = self.horizontal_stack[j][i][1]
                 if frame_idx == len(video_clip["frames"]) - 1:
                     max_caption_len = max(
-                        max_caption_len, video_clip["en_caption"].shape[0]
+                        max_caption_len, torch.tensor(video_clip["en_caption"]).shape[0]
                     )
             self.max_caption_len.append(max_caption_len)
 
@@ -136,14 +147,14 @@ class ActivityNetDataset(Dataset):
 
         # Initialize the caption with pad tokens.
         caption = torch.full(
-            [self.max_caption_len[curr_batch]], self.dataset.pad_token_id
+            [self.max_caption_len[curr_batch]], self.tokenizer.pad_token_id
         )
 
         if video_clip_idx is None:
             frame = torch.zeros(512)
         else:
             video_clip = self.dataset[video_clip_idx]
-            frame = video_clip["frames"][frame_idx]
+            frame = torch.tensor(video_clip["frames"][frame_idx])
 
             # Check if the frame is the last one of the video clip.
             if frame_idx == len(video_clip["frames"]) - 1:
@@ -152,3 +163,31 @@ class ActivityNetDataset(Dataset):
                 ]
 
         return frame, caption
+
+
+# if __name__ == "__main__":
+#     logging.basicConfig(level=logging.INFO)
+
+#     batch_size = 2
+
+#     dataset = ActivityNetDataset(
+#         "data/activitynet_validation_ViT-B_32_100.pkl",
+#         batch_size=batch_size,
+#     )
+
+#     dataloader = DataLoader(
+#         dataset,
+#         batch_size=batch_size,
+#         shuffle=False,
+#         num_workers=0,
+#     )
+
+#     for batch_idx, (frames, captions) in enumerate(dataloader):
+#         print(f"Batch {batch_idx}:")
+#         print(f"Frames shape: {frames.shape}")
+#         print(f"Captions shape: {captions.shape}")
+#         print(frames)
+#         print(captions)
+#         print()
+
+#         break

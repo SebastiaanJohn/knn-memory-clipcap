@@ -37,7 +37,8 @@ def parse_activitynet(
 
     Returns:
         Dataset: Dataset of video clip frame embeddings with their captions.
-            Example:
+
+    Example:
             [
                 {
                     "video_id": "v_xxxxxxxxxx",
@@ -101,8 +102,8 @@ def parse_activitynet(
             new_dataset.append(
                 {
                     "video_id": video_id,
-                    "en_caption": tokenizer.encode(
-                        caption, return_tensors="pt"
+                    "en_caption": torch.tensor(tokenizer.encode(
+                        caption, return_tensors="pt")
                     ),
                     "frames": torch.cat(embeddings, dim=0),
                 }
