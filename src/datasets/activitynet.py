@@ -65,6 +65,9 @@ class ActivityNetDataset(Dataset):
         for i in range(self.batching_steps):
             max_caption_len = 1
             for j in range(self.batch_size):
+                if self.horizontal_stack[j][i][0] is None:
+                    continue
+                    
                 video_clip = self.dataset[self.horizontal_stack[j][i][0]]
                 frame_idx = self.horizontal_stack[j][i][1]
                 if frame_idx == len(video_clip["frames"]) - 1:
@@ -133,7 +136,7 @@ class ActivityNetDataset(Dataset):
 
         # Initialize the caption with pad tokens.
         caption = torch.full(
-            self.max_caption_len[curr_batch], self.dataset.pad_token_id
+            [self.max_caption_len[curr_batch]], self.dataset.pad_token_id
         )
 
         if video_clip_idx is None:
