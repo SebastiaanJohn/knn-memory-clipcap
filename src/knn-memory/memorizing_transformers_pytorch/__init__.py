@@ -1,2 +1,0 @@
-from memorizing_transformers_pytorch.memorizing_transformers_pytorch import MemorizingTransformer, KNNAttention
-from memorizing_transformers_pytorch.knn_memory import KNNMemory
