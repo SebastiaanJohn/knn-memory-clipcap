@@ -168,6 +168,6 @@ tensorboard.sh
 
 # Project-specific files (e.g. datasets, models, etc.)
 src/clipcap/models/*.pt
-data/*
+src/data/*
 *.mp4
 src/datasets/pytube/__cache__

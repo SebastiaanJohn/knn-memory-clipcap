@@ -8,6 +8,7 @@ import sys
 
 import torch
 import torch.nn as nn
+from memorizing_transformers_pytorch import MemorizingTransformer
 from torch.nn import functional as nnf
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
@@ -17,8 +18,6 @@ from transformers import (
     GPT2Tokenizer,
     get_linear_schedule_with_warmup,
 )
-
-from memorizing_transformers_pytorch import MemorizingTransformer
 
 
 class ClipCocoDataset(Dataset):

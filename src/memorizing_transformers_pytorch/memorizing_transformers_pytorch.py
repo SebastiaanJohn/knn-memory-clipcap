@@ -1,18 +1,18 @@
 import math
-from functools import partial
 from contextlib import contextmanager
+from functools import partial
 from pathlib import Path
-from filelock import FileLock
 
 import torch
 import torch.nn.functional as F
-from torch import nn, einsum
+from einops import rearrange
+from filelock import FileLock
+from memorizing_transformers_pytorch.knn_memory import (
+    DEFAULT_KNN_MEMORY_MEMMAP_DIRECTORY,
+    KNNMemoryList,
+)
+from torch import einsum, nn
 
-from einops import rearrange, repeat
-from einops_exts import repeat_many
-from einops.layers.torch import Rearrange
-
-from memorizing_transformers_pytorch.knn_memory import KNNMemoryList, DEFAULT_KNN_MEMORY_MEMMAP_DIRECTORY
 
 # helper functions
 
