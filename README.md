@@ -10,12 +10,12 @@ The code is written in Python 3.10. Install the required packages using either `
 
 Our experiments use the [ActivityNet Caption](https://cs.stanford.edu/people/ranjaykrishna/densevid/) dataset.
 
-Download the videos in the training and validation set by running:
+To download the videos in the training subset (300 videos) and validation subset (100 videos) we used, run:
 ```bash
 cd data/
 
-wget "https://drive.google.com/u/0/uc?id=1EwCUfeeEfdaoAZ6CWbehutlf0chtgIJG&export=download&confirm=t" -O activitynet_train_ViT-B_32_300.pkl
-wget "https://drive.google.com/u/0/uc?id=1lsgiXG5leaXl4eU3fym4bKPgy6yjT7mk&export=download&confirm=t" -O activitynet_validation_ViT-B_32_100.pkl
+wget "https://drive.google.com/u/0/uc?id=1uz7fvCMt36keIcG-v9rxD3BGwCSO1lQz&export=download&confirm=t" -O activitynet_train_ViT-B_32_300.pkl
+wget "https://drive.google.com/u/0/uc?id=1eLwFtOmaQpADt78fODGq8EMqQKnvzBpX&export=download&confirm=t" -O activitynet_validation_ViT-B_32_100.pkl
 
 wget "https://drive.google.com/u/0/uc?id=1eIRY9AUTmP_4hKRcUb_3mN6jzP4YxBQu&export=download&confirm=t" -O train_subset_300.zip
 wget "https://drive.google.com/u/0/uc?id=1YCrqpjox0ePmt-aFJ6tvRZx0Mc0oKBCi&export=download&confirm=t" -O validation_subset_100.zip
@@ -26,13 +26,15 @@ unzip validation_subset_100.zip
 rm train_subset_300.zip
 rm validation_subset_100.zip
 ```
+Alternatively, you can download these files manually from [here](https://drive.google.com/drive/folders/16HZede6SwJXrhKBcl6Gg2TodsPqUI8Kl).
 
+
+If you want to download the entire ActivityNet Caption dataset, run:
 ```bash
 python3 src/datasets/download_dataset.py
 ```
 
 To extract frames from the downloaded videos or your own videos, execute:
-
 ```bash
 python3 src/datasets/extract_frames.py -r <path_to_videos>
 ```
