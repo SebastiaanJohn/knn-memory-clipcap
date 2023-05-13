@@ -11,7 +11,7 @@ During the training phase, the CLIP encoder (pre-trained on image-text pairs usi
 
 During inference, the ClipCap model pipeline generates captions by predicting one token at a time, guided by the GPT2 model. This model utilizes a greedy approach, which predicts a probability for all tokens in the vocabulary for each token.
 
-The performance of the ClipCap model pipeline was evaluated using three datasets: Conceptual Captions, NoCaps, and COCO. These datasets were curated to represent a wide array of visual concepts. The ClipCap model pipeline demonstrated excellent performance with the Conceptual Captions and NoCaps datasets, thereby establishing itself as an efficient and effective solution for image captioning. Moreover, given its training on diverse images, the ClipCap model pipeline was found to generalize well to randomly chosen new images.
+The performance of the ClipCap model pipeline was evaluated using three datasets: [Conceptual Captions](https://aclanthology.org/P18-1238.pdf), [NoCaps](https://arxiv.org/abs/1812.08658), and [COCO](https://arxiv.org/abs/1405.0312). These datasets were curated to represent a wide array of visual concepts. The ClipCap model pipeline demonstrated excellent performance with the Conceptual Captions and NoCaps datasets, thereby establishing itself as an efficient and effective solution for image captioning. Moreover, given its training on diverse images, the ClipCap model pipeline was found to generalize well to randomly chosen new images.
 
 In conclusion, the ClipCap model pipeline is a swift, user-friendly, and efficient solution for image captioning that achieves state-of-the-art performance across multiple datasets.
 
