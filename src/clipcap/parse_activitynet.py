@@ -64,11 +64,10 @@ def parse_activitynet(
         Dataset: Dataset of video clip frame embeddings with their captions.
             Each sample in the dataset contains the following keys:
                 video_id (str): The video id. Formatted as "v_xxxxxxxxxx".
-                caption (torch.Tensor): The token ids of the video clip's
-                    caption.
-                    Shape: [caption_length].
                 frames (torch.Tensor): The frame embeddings of the video clip.
                     Shape: [num_frames, embedding_size].
+                caption (torch.Tensor): Token ids of the video clip's caption.
+                    Shape: [caption_length].
             The Dataset object also contains the following attribute:
                 pad_token_id (int): The token id of a special padding token
                     that can be used to pad the captions in this dataset.
@@ -134,10 +133,10 @@ def parse_activitynet(
             prepr_dataset.append(
                 {
                     "video_id": video_id,
+                    "frames": torch.cat(embeddings, dim=0),
                     "caption": tokenizer.encode(
                         caption, return_tensors="pt"
                     ).squeeze(0),
-                    "frames": torch.cat(embeddings, dim=0),
                 }
             )
 
@@ -147,13 +146,13 @@ def parse_activitynet(
         features=Features(
             {
                 "video_id": Value("string"),
-                "caption": Sequence(feature=Value("int64")),
                 "frames": Array2D(shape=(None, 512), dtype="float32"),
+                "caption": Sequence(feature=Value("int64")),
             }
         ),
     )
     prepr_dataset.set_format(
-        type="torch", columns=["caption", "frames"], output_all_columns=True
+        type="torch", columns=["frames", "caption"], output_all_columns=True
     )
     prepr_dataset.pad_token_id = tokenizer.pad_token_id
     return prepr_dataset
@@ -223,7 +222,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--frames_dir",
         type=str,
-        default="data/train_subset_300/",
+        default="src/data/train_subset_300/",
         help="Path to the directory containing the video frames.",
     )
     parser.add_argument(

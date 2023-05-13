@@ -1,125 +1,145 @@
-"""Dataset class for ActivityNet Captions."""
+"""Dataset class for loading ActivityNet video clips efficiently."""
 
+import argparse
 import logging
-import math
 import pickle
-from pathlib import Path
 
+import prtpy
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
-from transformers import GPT2Tokenizer
 
 
 class ActivityNetDataset(Dataset):
     """Dataset for loading ActivityNet video clips and captions."""
 
-    def __init__(self, data_path: str, batch_size: int) -> None:
-        """Initialize ActivityNetDataset.
-
-        Args:
-            data_path (str): The path to the pre-processed ActivityNet dataset
-                pickle file.
-            batch_size (int): The batch size. Must be the same as the batch
-                size used for the DataLoader.
-        """
-        self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2", pad_token="[PAD]")
-        self.data_path = Path(data_path)
-        with Path.open(self.data_path, "rb") as f:
-            self.dataset = pickle.load(f)
-
-        # Use subset of dataset for debugging. self.dataset is a HuggingFace dataset.
-        # self.dataset = self.dataset.select(range(6))
-
-        logging.info(
-            f"There are {len(self.dataset)} video clips in the dataset."
-        )
-
-        # * The rest of this function is used for creating data structures that
-        # * are used for efficient batching. The data structures are explained
-        # * in more detail in the __getitem__ function docstring.
-
-        # Initialize horizontal stack of frames.
-        # horizontal_stack[i][j] is a tuple containing:
-        # - The index of the video clip in the dataset.
-        # - The index of the frame within the video clip.
-        total_frames = sum(len(v["frames"]) for v in self.dataset)
-        self.batch_size = batch_size
-        self.batching_steps = math.ceil(total_frames / self.batch_size)
-        self.horizontal_stack = [
-            [(None, None) for _ in range(self.batching_steps)]
-            for _ in range(self.batch_size)
-        ]
-
-        # Create horizontal stack of frames.
-        current_video_clip_idx = 0
-        frame_idx = 0
-        for i in tqdm(range(self.batching_steps)):
-            for j in range(self.batch_size):
-                # Get next video clip if current one is exhausted.
-                if frame_idx >= len(self.dataset[current_video_clip_idx]["frames"]):
-                    current_video_clip_idx += 1
-                    frame_idx = 0
-
-                if current_video_clip_idx >= len(self.dataset):
-                    # If all video clips have been processed, stop filling the stack
-                    break
-
-                self.horizontal_stack[j][i] = (
-                    current_video_clip_idx,
-                    frame_idx,
-                )
-                frame_idx += 1
-
-        # Get the longest caption length within the current batch.
-        self.max_caption_len = []
-        for i in range(self.batching_steps):
-            max_caption_len = 1
-            for j in range(self.batch_size):
-                if self.horizontal_stack[j][i][0] is None:
-                    continue
-
-                video_clip = self.dataset[self.horizontal_stack[j][i][0]]
-                frame_idx = self.horizontal_stack[j][i][1]
-                if frame_idx == len(video_clip["frames"]) - 1:
-                    max_caption_len = max(
-                        max_caption_len, torch.tensor(video_clip["en_caption"]).shape[0]
-                    )
-            self.max_caption_len.append(max_caption_len)
-
-    def __len__(self) -> int:
-        """Return the amount of video clips in the dataset.
-
-        Returns:
-            int: The length of the dataset.
-        """
-        return len(self.dataset)
-
-    def __getitem__(self, item: int) -> tuple[torch.Tensor, torch.Tensor]:
-        r"""Get a single frame from a video clip from the dataset.
+    def __init__(self, prepr_dataset_path: str, batch_size: int) -> None:
+        r"""Initialize ActivityNetDataset.
 
         The data is layed out in a horizontal stack of frames, where the frames
         of a video clip are stacked horizontally. The vertical dimension is
         created automatically by the DataLoader, and represents the batch
-        dimension. This function will return a single entry from the stack.
-        Example illustration:
-            - Fx-Vy means frame x of video clip y.
-            - In this illustration, V1 has 5 frames, V2 has 3 frames, V3
-              has 1 frame, V4 has 2 frames, V5 has 4 frames, and V6 has 3
-              frames.
+        dimension. The __getitem__ function will return a single entry from
+        the stack.
+
+        Example illustration of a horizontal stack of frames:
                         Step1  Step2  Step3  Step4  Step5  Step6  Step7
                           v      v      v      v      v      v      v
                      / [F1-V1, F2-V1, F3-V1, F4-V1, F5-V1, F1-V4, F2-V4]
         Batch size -+  [F1-V2, F2-V2, F3-V2, F1-V5, F2-V5, F3-V5, F4-V5]
                      \ [F1-V3, F1-V6, F2-V6, F3-V6, empty, empty, empty]
-            - The indices of the frames in the horizontal stack are layed out
-              as follows. This is done to ensure that the frames are loaded in
-              the correct order by the DataLoader.
-                        Step1  Step2  Step3  Step4  Step5  Step6  Step7
-                          v      v      v      v      v      v      v
-                     / [  0  ,   3  ,   6  ,   9  ,  12  ,  15  ,  18  ]
-        Batch size -+  [  1  ,   4  ,   7  ,  13  ,  16  ,  19  ,  22  ]
-                     \ [  2  ,  10  ,  17  ,  20  ,  23  ,  24  ,  25  ]
+        - Fx-Vy means frame x of video clip y.
+        - In this illustration, V1 has 5 frames, V2 has 3 frames, V3 has 1
+          frame, V4 has 2 frames, V5 has 4 frames, and V6 has 3 frames.
+        - The indices of the frames in the horizontal stack are layed out as
+          follows. This is done to ensure that the frames are loaded in the
+          correct order by the DataLoader.
+                          Step1  Step2  Step3  Step4  Step5  Step6  Step7
+                            v      v      v      v      v      v      v
+                       / [  0  ,   3  ,   6  ,   9  ,  12  ,  15  ,  18  ]
+          Batch size -+  [  1  ,   4  ,   7  ,  13  ,  16  ,  19  ,  22  ]
+                       \ [  2  ,  10  ,  17  ,  20  ,  23  ,  24  ,  25  ]
+        - We would like the total number of batches to be the least number
+          possible. This problem is equivalent to the multiway partitioning
+          problem (https://en.wikipedia.org/wiki/Multiway_number_partitioning),
+          where we want to minimize the largest sum. This problem is NP-hard,
+          but we use the prtpy implementation of the Multifit algorithm, which
+          can approximate the optimal solution in paseuo-polynomial time. The
+          approximation is guaranteed to be within a factor of 13/11 of the
+          optimal solution.
+
+        Args:
+            prepr_dataset_path (str): Path to the pre-processed ActivityNet
+                pickle file. The pickle file should contain a HuggingFace
+                `datasets.Dataset` object.
+            batch_size (int): The batch size. Must be the same as the batch
+                size used for the DataLoader.
+        """
+        self.batch_size = batch_size
+
+        # Load pre-processed dataset.
+        logging.info("Loading pre-processed dataset...")
+        with open(prepr_dataset_path, "rb") as f:
+            self.prepr_dataset = pickle.load(f)
+        self.pad_token_id = self.prepr_dataset.pad_token_id
+        self.frame_embed_dim = self.prepr_dataset.features["frames"].shape[1]
+        logging.info(
+            f"Dataset contains {self.prepr_dataset.num_rows} video clips."
+        )
+
+        # Count total number of frames in the dataset.
+        logging.info("Calculating number of frames and caption lengths...")
+        self.num_frames = []
+        self.caption_lens = []
+        for video_clip in tqdm(self.prepr_dataset):
+            self.num_frames.append(video_clip["frames"].shape[0])
+            self.caption_lens.append(video_clip["caption"].shape[0])
+        total_frames = sum(self.num_frames)
+        logging.info(f"Total frames in dataset: {total_frames}")
+
+        # Solve the multiway partitioning problem.
+        logging.info("Dividing frames optimally over batches...")
+        bins = prtpy.partition(
+            algorithm=prtpy.partitioning.multifit,
+            numbins=self.batch_size,
+            items=dict(enumerate(self.num_frames)),
+        )
+        self.steps = max(
+            sum(
+                self.num_frames[video_clip_idx]
+                for video_clip_idx in video_clip_idcs
+            )
+            for video_clip_idcs in bins
+        )
+        logging.info(f"Number of batches: {self.steps}")
+        if len(bins) < self.batch_size:
+            logging.warning(
+                f"Number of bins ({len(bins)}) is less than batch size "
+                f"({self.batch_size}). This means that all batches will "
+                "contain some empty frames, which is not efficient. Please "
+                f"lower the batch size to {len(bins)}."
+            )
+
+        # Create horizontal stack of frames.
+        # hor_stack[i][j] is a tuple containing:
+        # - int: The index of the video clip in the dataset.
+        # - int: The index of the frame within the video clip.
+        # If the video clips are exhausted, hor_stack[i][j] is None.
+        logging.info("Creating horizontal stack of frames...")
+        self.hor_stack = []
+        for bin in tqdm(bins):
+            layer = []
+            for video_clip_idx in bin:
+                for frame_idx in range(self.num_frames[video_clip_idx]):
+                    layer.append((video_clip_idx, frame_idx))
+            layer += [None] * (self.steps - len(layer))
+            self.hor_stack.append(layer)
+
+        # Get the longest caption length within the current batch.
+        logging.info("Getting max caption length for each step...")
+        self.max_caption_len = []
+        for j in tqdm(range(self.steps)):
+            max_caption_len = 1
+            for i in range(self.batch_size):
+                if self.hor_stack[i][j] is None:
+                    continue
+                video_clip_idx, frame_idx = self.hor_stack[i][j]
+                if frame_idx == self.num_frames[video_clip_idx] - 1:
+                    caption_len = self.caption_lens[video_clip_idx]
+                    if caption_len > max_caption_len:
+                        max_caption_len = caption_len
+            self.max_caption_len.append(max_caption_len)
+
+    def __len__(self) -> int:
+        """Return the amount of video clip frames in the dataset.
+
+        Returns:
+            int: The length of the dataset.
+        """
+        return self.steps * self.batch_size
+
+    def __getitem__(self, item: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Get a single frame and its corresponding video clip's caption.
 
         Args:
             item (int): Index of the frame within the horizontal stack of
@@ -127,67 +147,90 @@ class ActivityNetDataset(Dataset):
 
         Returns:
             Tuple containing:
-                torch.Tensor: The frame embedding. If the frame is an "empty"
-                    frame (this only occurs in the last batch), the frame
-                    embedding is a zero tensor.
-                    Shape: [512]
-                torch.Tensor: The caption token ids, if the frame is the last
-                    one of the video clip. If the frame is not the last one,
-                    the caption token ids is a zero tensor that has the same
-                    shape as the longest caption in the current batch. If none
-                    of the video clips in the current batch have a caption,
-                    the caption token ids is a zero tensor with shape [1].
-                    Shape: [max_caption_len]
+                torch.Tensor: The frame embedding. If no frame was assigned to
+                    this item (because the video clip was exhausted), a zero
+                    tensor is returned.
+                    Shape: [embedding_dim].
+                torch.Tensor: The caption token ids, IF AND ONLY IF the frame
+                    is the last one of the video clip. If the frame is not the
+                    last one, a tensor filled with padding tokens is returned
+                    with the same shape as the longest caption in the current
+                    batch. If none of the video clips in the current batch
+                    have a caption, a tensor with a single padding token is
+                    returned. The padding token id can be retrieved from the
+                    `pad_token_id` attribute.
+                    Shape: [max_caption_len] or [1].
         """
-        # Get the current video clip and frame index in O(1).
-        curr_batch = item // self.batch_size
-        video_clip_idx, frame_idx = self.horizontal_stack[
-            item % self.batch_size
-        ][curr_batch]
+        j, i = divmod(item, self.batch_size)
 
-        # Initialize the caption with pad tokens.
-        caption = torch.full(
-            [self.max_caption_len[curr_batch]], self.tokenizer.pad_token_id
-        )
+        # Initialize the caption with padding tokens.
+        caption = torch.full((self.max_caption_len[j],), self.pad_token_id)
 
-        if video_clip_idx is None:
-            frame = torch.zeros(512)
+        # Retrieve the frame and caption corresponding to the current item.
+        if self.hor_stack[i][j] is None:
+            frame = torch.zeros(self.frame_embed_dim)
         else:
-            video_clip = self.dataset[video_clip_idx]
-            frame = torch.tensor(video_clip["frames"][frame_idx])
-
-            # Check if the frame is the last one of the video clip.
-            if frame_idx == len(video_clip["frames"]) - 1:
-                caption[: video_clip["en_caption"].shape[0]] = video_clip[
-                    "en_caption"
-                ]
+            video_clip_idx, frame_idx = self.hor_stack[i][j]
+            video_clip = self.prepr_dataset[video_clip_idx]
+            frame = video_clip["frames"][frame_idx]
+            if frame_idx == self.num_frames[video_clip_idx] - 1:
+                caption_len = self.caption_lens[video_clip_idx]
+                caption[:caption_len] = video_clip["caption"]
 
         return frame, caption
 
 
-# if __name__ == "__main__":
-#     logging.basicConfig(level=logging.INFO)
+def main(args: argparse.Namespace) -> None:
+    """Test whether data loading using a DataLoader works correctly.
 
-#     batch_size = 2
+    Args:
+        args (argparse.Namespace): The command line arguments.
+    """
+    # Create the dataset and dataloader.
+    dataset = ActivityNetDataset(
+        "src/data/activitynet_ViT-B_32_train_300.pkl", args.batch_size
+    )
+    dataloader = DataLoader(
+        dataset, batch_size=args.batch_size, num_workers=args.num_workers
+    )
 
-#     dataset = ActivityNetDataset(
-#         "data/activitynet_validation_ViT-B_32_100.pkl",
-#         batch_size=batch_size,
-#     )
+    # Print a single batch for testing purposes.
+    logging.info("Going through dataloader to ensure no errors occur...")
+    for batch_idx, (frames, captions) in enumerate(tqdm(dataloader)):
+        if batch_idx == 1:
+            logging.info(f"Batch {batch_idx}:")
+            logging.info(f"{frames.shape=}")
+            logging.info(f"{captions.shape=}")
+            logging.info(f"{frames=}")
+            logging.info(f"{captions=}")
+            logging.info("")
 
-#     dataloader = DataLoader(
-#         dataset,
-#         batch_size=batch_size,
-#         shuffle=False,
-#         num_workers=0,
-#     )
 
-#     for batch_idx, (frames, captions) in enumerate(dataloader):
-#         print(f"Batch {batch_idx}:")
-#         print(f"Frames shape: {frames.shape}")
-#         print(f"Captions shape: {captions.shape}")
-#         print(frames)
-#         print(captions)
-#         print()
+if __name__ == "__main__":
+    # Set up logging.
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+        datefmt="%H:%M:%S",
+    )
 
-#         break
+    # Create the argument parser.
+    parser = argparse.ArgumentParser()
+
+    # Define command line arguments.
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=32,
+        help="Batch size to use for data loading.",
+    )
+    parser.add_argument(
+        "--num_workers",
+        type=int,
+        default=0,
+        help="Number of workers to use for data loading.",
+    )
+
+    # Parse the arguments.
+    args = parser.parse_args()
+    main(args)
