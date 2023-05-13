@@ -34,6 +34,7 @@ def get_device() -> torch.device:
         return torch.device("mps")
     return torch.device("cpu")
 
+
 def parse_activitynet(
     dataset: IterableDataset,
     frames_dir: str,
@@ -133,7 +134,9 @@ def parse_activitynet(
             prepr_dataset.append(
                 {
                     "video_id": video_id,
-                    "caption": tokenizer.encode(caption, return_tensors="pt"),
+                    "caption": tokenizer.encode(
+                        caption, return_tensors="pt"
+                    ).squeeze(0),
                     "frames": torch.cat(embeddings, dim=0),
                 }
             )
