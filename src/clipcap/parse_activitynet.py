@@ -22,6 +22,18 @@ from tqdm import tqdm
 from transformers import GPT2Tokenizer
 
 
+def get_device() -> torch.device:
+    """Get the device to use for computing CLIP embeddings.
+
+    Returns:
+        torch.device: The device to use.
+    """
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
 def parse_activitynet(
     dataset: IterableDataset,
     frames_dir: str,
@@ -60,7 +72,8 @@ def parse_activitynet(
                 pad_token_id (int): The token id of a special padding token
                     that can be used to pad the captions in this dataset.
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_device()
+    logging.info(f"Using device: {device}")
     clip_model, preprocess = clip.load(
         clip_model_type, device=device, jit=False
     )
@@ -149,7 +162,6 @@ def main(args: argparse.Namespace):
     Args:
         args (argparse.Namespace): The command line arguments.
     """
-
     # Load the dataset.
     logging.info(f"Loading {args.split} split of ActivityNet Captions...")
     dataset = load_dataset(
