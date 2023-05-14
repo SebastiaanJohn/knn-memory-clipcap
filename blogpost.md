@@ -39,7 +39,7 @@ Following the pretraining, we will employ the [ActivityNet Captions](https://arx
 
 ### Preprocessing
 
-Videos are converted into image frames at a rate of five frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to end of each caption, treating it as an independent video clip. These frames are individually embedded using the ClipCap model, then concatenated into a single tensor. The captions are tokenized using the GPT2 tokenizer. Given that we are only finetuning the model, we will use a small subset of the dataset. The distribution of the dataset across different categories is outlined in the table below.
+Videos are converted into image frames at a rate of five frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to end of each caption, treating it as an independent video clip. These frames are individually embedded using the ClipCap model, then concatenated into a single tensor. The captions are tokenized using the GPT2 tokenizer. Given that we are only finetuning the model, we will use a small subset of the dataset. The final preprocessed datasets can be accessed via the links provided in our GitHub repository. The distribution of the dataset across different categories is outlined in the table below.
 
 | **Split**   | **Train** | **Test** |
 |-------------|-----------|----------|
