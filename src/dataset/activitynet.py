@@ -3,6 +3,7 @@
 import argparse
 import logging
 import pickle
+from pathlib import Path
 
 import prtpy
 import torch
@@ -16,7 +17,7 @@ class ActivityNetDataset(Dataset):
     def __init__(
         self, prepr_dataset_path: str, batch_size: int, prefix_length: int
     ) -> None:
-        r"""Initialize ActivityNetDataset.
+        r"""Initialize an ActivityNetDataset object.
 
         The data is layed out in a horizontal stack of frames, where the frames
         of a video clip are stacked horizontally. The vertical dimension is
@@ -56,6 +57,7 @@ class ActivityNetDataset(Dataset):
                 `datasets.Dataset` object.
             batch_size (int): The batch size. Must be the same as the batch
                 size used for the DataLoader.
+            prefix_length (int): The length of the caption's prefix.
         """
         self.batch_size = batch_size
         self.prefix_length = prefix_length
@@ -141,7 +143,9 @@ class ActivityNetDataset(Dataset):
         """
         return self.steps * self.batch_size
 
-    def __getitem__(self, item: int) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(
+        self, item: int
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Get a single frame and its corresponding video clip's caption.
 
         Args:
@@ -150,10 +154,6 @@ class ActivityNetDataset(Dataset):
 
         Returns:
             Tuple containing:
-                torch.Tensor: The frame embedding. If no frame was assigned to
-                    this item (because the video clip was exhausted), a zero
-                    tensor is returned.
-                    Shape: [embedding_dim].
                 torch.Tensor: The caption token ids, IF AND ONLY IF the frame
                     is the last one of the video clip. If the frame is not the
                     last one, a tensor filled with padding tokens is returned
@@ -163,10 +163,26 @@ class ActivityNetDataset(Dataset):
                     returned. The padding token id can be retrieved from the
                     `pad_token_id` attribute.
                     Shape: [max_caption_len] or [1].
+                torch.Tensor: The caption mask, IF AND ONLY IF the frame is
+                    the last one of the video clip. If the frame is not the
+                    last one, a tensor filled with zeros is returned with the
+                    same shape as the longest caption in the current batch +
+                    the prefix length. If none of the video clips in the
+                    current batch have a caption, a zero tensor with shape
+                    1 + the prefix length is returned. The prefix length can be
+                    retrieved from the `prefix_length` attribute. A value in
+                    the mask is 1 if the corresponding token in the caption is
+                    non-padding, and 0 otherwise.
+                    Shape: [max_caption_len + prefix_length]
+                        or [1 + prefix_length].
+                torch.Tensor: The frame embedding. If no frame was assigned to
+                    this item (because the video clip was exhausted), a zero
+                    tensor is returned.
+                    Shape: [embedding_dim].
         """
         j, i = divmod(item, self.batch_size)
 
-        # Initialize the caption with padding tokens.
+        # Initialize the caption with padding tokens and the mask with zeros.
         caption = torch.full((self.max_caption_len[j],), self.pad_token_id)
         mask = torch.zeros(self.prefix_length + self.max_caption_len[j])
 
@@ -193,9 +209,12 @@ def main(args: argparse.Namespace) -> None:
         args (argparse.Namespace): The command line arguments.
     """
     # Create the dataset and dataloader.
+    clip_model_type = args.clip_model_type.replace("/", "_")
     dataset = ActivityNetDataset(
-        "src/data/activitynet_ViT-B_32_train_300.pkl",
-        args.batch_size, args.prefix_length
+        Path("src/data")
+        / f"activitynet_{clip_model_type}_{args.split}_{args.subset}.pkl",
+        args.batch_size,
+        args.prefix_length,
     )
     dataloader = DataLoader(
         dataset, batch_size=args.batch_size, num_workers=args.num_workers
@@ -203,13 +222,15 @@ def main(args: argparse.Namespace) -> None:
 
     # Print a single batch for testing purposes.
     logging.info("Going through dataloader to ensure no errors occur...")
-    for batch_idx, (frames, captions) in enumerate(tqdm(dataloader)):
+    for batch_idx, (captions, masks, frames) in enumerate(tqdm(dataloader)):
         if batch_idx == 1:
             logging.info(f"Batch {batch_idx}:")
-            logging.info(f"{frames.shape=}")
             logging.info(f"{captions.shape=}")
-            logging.info(f"{frames=}")
+            logging.info(f"{masks.shape=}")
+            logging.info(f"{frames.shape=}")
             logging.info(f"{captions=}")
+            logging.info(f"{masks=}")
+            logging.info(f"{frames=}")
             logging.info("")
 
 
@@ -226,6 +247,26 @@ if __name__ == "__main__":
 
     # Define command line arguments.
     parser.add_argument(
+        "--split",
+        type=str,
+        default="train",
+        choices=("train", "validation", "test"),
+        help="The dataset split to use.",
+    )
+    parser.add_argument(
+        "--subset",
+        type=int,
+        default=300,
+        help="Number of videos to use from the split.",
+    )
+    parser.add_argument(
+        "--clip_model_type",
+        type=str,
+        default="ViT-B/32",
+        choices=("RN50", "RN101", "RN50x4", "ViT-B/32"),
+        help="The CLIP model to use.",
+    )
+    parser.add_argument(
         "--batch_size",
         type=int,
         default=32,
@@ -235,6 +276,7 @@ if __name__ == "__main__":
         "--prefix_length",
         type=int,
         default=20,
+        help="Number of tokens to use as prefix for the caption.",
     )
     parser.add_argument(
         "--num_workers",

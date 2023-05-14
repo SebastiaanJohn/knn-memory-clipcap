@@ -183,10 +183,10 @@ def main(args: argparse.Namespace):
     # Save pre-processed dataset in parent folder of `args.frames_dir`.
     logging.info("Saving pre-processed dataset...")
     output_dir = Path(args.frames_dir).parent
-    clip_model_name = args.clip_model_type.replace("/", "_")
+    clip_model_type = args.clip_model_type.replace("/", "_")
     with Path.open(
         output_dir
-        / f"activitynet_{clip_model_name}_{args.split}_{args.subset}.pkl",
+        / f"activitynet_{clip_model_type}_{args.split}_{args.subset}.pkl",
         "wb",
     ) as f:
         pickle.dump(prepr_dataset, f)
