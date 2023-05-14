@@ -5,7 +5,7 @@ import logging
 import shutil
 from pathlib import Path
 
-from datasets import IterableDataset, load_dataset
+from dataset import IterableDataset, load_dataset
 from tqdm import tqdm
 
 

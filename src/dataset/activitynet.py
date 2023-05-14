@@ -13,7 +13,9 @@ from tqdm import tqdm
 class ActivityNetDataset(Dataset):
     """Dataset for loading ActivityNet video clips and captions."""
 
-    def __init__(self, prepr_dataset_path: str, batch_size: int) -> None:
+    def __init__(
+        self, prepr_dataset_path: str, batch_size: int, prefix_length: int
+    ) -> None:
         r"""Initialize ActivityNetDataset.
 
         The data is layed out in a horizontal stack of frames, where the frames
@@ -56,12 +58,13 @@ class ActivityNetDataset(Dataset):
                 size used for the DataLoader.
         """
         self.batch_size = batch_size
+        self.prefix_length = prefix_length
 
         # Load pre-processed dataset.
         logging.info("Loading pre-processed dataset...")
         with open(prepr_dataset_path, "rb") as f:
             self.prepr_dataset = pickle.load(f)
-        self.pad_token_id = self.prepr_dataset.pad_token_id
+        self.pad_token_id = 198
         self.frame_embed_dim = self.prepr_dataset.features["frames"].shape[1]
         logging.info(
             f"Dataset contains {self.prepr_dataset.num_rows} video clips."
@@ -165,6 +168,7 @@ class ActivityNetDataset(Dataset):
 
         # Initialize the caption with padding tokens.
         caption = torch.full((self.max_caption_len[j],), self.pad_token_id)
+        mask = torch.zeros(self.prefix_length + self.max_caption_len[j])
 
         # Retrieve the frame and caption corresponding to the current item.
         if self.hor_stack[i][j] is None:
@@ -176,8 +180,10 @@ class ActivityNetDataset(Dataset):
             if frame_idx == self.num_frames[video_clip_idx] - 1:
                 caption_len = self.caption_lens[video_clip_idx]
                 caption[:caption_len] = video_clip["caption"]
+                total_len = self.prefix_length + caption_len
+                mask[:total_len] = torch.ones(total_len)
 
-        return frame, caption
+        return caption, mask, frame
 
 
 def main(args: argparse.Namespace) -> None:
@@ -188,7 +194,8 @@ def main(args: argparse.Namespace) -> None:
     """
     # Create the dataset and dataloader.
     dataset = ActivityNetDataset(
-        "src/data/activitynet_ViT-B_32_train_300.pkl", args.batch_size
+        "src/data/activitynet_ViT-B_32_train_300.pkl",
+        args.batch_size, args.prefix_length
     )
     dataloader = DataLoader(
         dataset, batch_size=args.batch_size, num_workers=args.num_workers
@@ -223,6 +230,11 @@ if __name__ == "__main__":
         type=int,
         default=32,
         help="Batch size to use for data loading.",
+    )
+    parser.add_argument(
+        "--prefix_length",
+        type=int,
+        default=20,
     )
     parser.add_argument(
         "--num_workers",
