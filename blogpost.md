@@ -35,7 +35,7 @@ Nevertheless, we encounter problems associated with long-range dependencies when
 
 In keeping with the methodology of the ClipCap research, we will use the COCO dataset for the initial pretraining of our mapping network. Renowned for its diversity in everyday scene contexts, the COCO dataset comprises over 300,000 images, each with five associated captions. This dataset enables our model to learn from various objects and scenes, enhancing its ability to generalize and adapt to novel instances.
 
-Following the pretraining, we will employ the ActivityNet Captions dataset for finetuning. The ActivityNet Captions dataset provides a more task-specific data source explicitly designed for the temporal localization and captioning of activities. With 20,000 videos sourced from YouTube, amounting to 849 hours of footage, accompanied by 100,000 detailed descriptions of sequences of actions within the videos, it presents an optimal choice for our research.
+Following the pretraining, we will employ the [ActivityNet Captions](https://arxiv.org/pdf/1705.00754v1.pdf) dataset for finetuning. The ActivityNet Captions dataset provides a more task-specific data source explicitly designed for the temporal localization and captioning of activities. With 20,000 videos sourced from YouTube, amounting to 849 hours of footage, accompanied by 100,000 detailed descriptions of sequences of actions within the videos, it presents an optimal choice for our research.
 
 ### Preprocessing
 
