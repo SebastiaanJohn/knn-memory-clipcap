@@ -1,15 +1,18 @@
 # kNN-Memory with ClipCap: Enhanced Long-Range Dependency Handling
-This repository provides the code for our project, which combines kNN-Memory and ClipCap to improve long-range dependency handling. The project builds on the [ClipCap](https://github.com/rmokady/CLIP_prefix_caption) and [Memorizing Transformers](https://github.com/lucidrains/memorizing-transformers-pytorch) repositories.
 
+This repository provides the code for our project, which combines kNN-Memory and ClipCap to improve long-range dependency handling. The project builds on the [ClipCap](https://github.com/rmokady/CLIP_prefix_caption) and [Memorizing Transformers](https://github.com/lucidrains/memorizing-transformers-pytorch) repositories. This work is conducted as part of the academic curriculum for the [Deep Learning 2](https://uvadl2c.github.io) course at the University of Amsterdam.
 
 ## Requirements
+
 The code is written in Python 3.10. Install the required packages using either `pip install -r requirements.txt` or by creating a conda environment with the provided environment.yml file using `conda env create -f environment.yml`.
 
 
 ## Dataset
+
 Our experiments use the [ActivityNet Caption](https://cs.stanford.edu/people/ranjaykrishna/densevid/) dataset. Use one of the following methods to download the dataset (the first method is recommended, other methods are only provided for full reproducibility).
 
 1. To download the videos in the training subset (300 videos) and validation subset (100 videos) we used, run:
+
     ```bash
     cd src/data/
 
@@ -18,6 +21,7 @@ Our experiments use the [ActivityNet Caption](https://cs.stanford.edu/people/ran
     ```
 
 2. To download the videos themselves and pre-process the dataset manually, run:
+
     ```bash
     cd src/data/
 
@@ -34,17 +38,22 @@ Our experiments use the [ActivityNet Caption](https://cs.stanford.edu/people/ran
 3. Alternatively, you can download the whole dataset manually from [here](https://drive.google.com/drive/folders/16HZede6SwJXrhKBcl6Gg2TodsPqUI8Kl).
 
 4. If you want to download the entire ActivityNet Caption dataset, run:
+
     ```bash
+
     python3 src/datasets/download_dataset.py
     ```
+
     To extract frames from the downloaded videos or your own videos, execute:
+
     ```bash
     python3 src/datasets/extract_frames.py -r <path_to_videos>
     ```
+
     This command creates a `frames` folder in the videos' parent directory. By default, frames are extracted at 5 fps. To modify this setting, use the `-fps` flag. The script also generates a summary CSV file in the `frames` folder, containing the video ID, frame extraction success status, and number of frames extracted.
 
-
 ## (Optional) Pretrained model weights
+
 Download the COCO and Conceptual Captions model weights by running the following commands:
 
 ```bash
