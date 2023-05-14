@@ -18,30 +18,36 @@
 
 
 ## Introduction
+
 <!-- Introduction: An analysis of the paper and its key components. Think about it as a nicely formatted review as you would see on OpenReview.net. It should contain one paragraph of related work as well. -->
-Image captioning is a multimodal task that involves generating textual descriptions of images. This research investigates a method called [ClipCap](https://arxiv.org/abs/2111.09734), which was explicitly proposed for this task, and explores the potential of enhancing this method by integrating long-range dependency handling into the model.
+__Image captioning__ is a multimodal task that involves generating textual descriptions of images. This research investigates a method called [ClipCap](https://arxiv.org/abs/2111.09734), explicitly proposed for this task, and explores the potential of enhancing this method by integrating long-range dependency handling into the model.
 
 ### ClipCap Summary
-The ClipCap method utilizes a pipeline of pre-trained models to generate captions for images. This pipeline consists of the [CLIP](https://arxiv.org/abs/2103.00020) model, a mapping network, and a pre-trained language model (LM), namely [GPT-2](https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf). The CLIP image encoder extracts high-level information from the visual data, while the pre-trained LM generates the caption. The mapping network serves as a bridge between the two, linking the latent spaces of the two models.
 
-More specifically, for a given image, the CLIP image encoder generates an embedding containing high-level information about the image. This embedding is passed through the mapping network to obtain a so-called "prefix", a list of embeddings associated with the image content. Finally, the prefix embeddings are used as input to GPT-2, which will generate the caption in an autoregressive manner.
+The ClipCap method utilizes a pipeline of pre-trained models to generate captions for images. This pipeline consists of the [CLIP](https://arxiv.org/abs/2103.00020) model, a mapping network, and a pre-trained language model (LM), namely [GPT-2](https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf). The CLIP image encoder extracts high-level information from the visual data while the pre-trained LM generates the caption. The mapping network bridges the two, linking the latent spaces of the two models.
+
+More specifically, for a given image, the CLIP image encoder generates an embedding containing high-level information about the image. This embedding is passed through the mapping network to obtain a so-called "prefix," a list of embeddings associated with the image content. Finally, the prefix embeddings are used as input to GPT-2, which will generate the caption autoregressively.
 
 <!-- ### Motivation
 
 Moreover, the ClipCap model pipeline is modular, allowing for the swift adaptation or replacement of the CLIP endoder and GPT-2 decoder models. This feature enables the pipeline model to be easily adapted for different tasks, but this capability was not explored in the original paper. This coud be a nice aspect to review in ablation studies to understand the model's underlying mechanisms better. -->
 
 ### Main results
-The authors experiment with two different training procedures for the ClipCap model pipeline. In the first approach, the CLIP model is kept static, GPT-2 is fine-tuned, and the mapping network is an MLP that is trained from scratch. In the second approach, the CLIP and GPT-2 models are kept static, and the mapping network is a transformer encoder that is is trained from scratch. The authors found that the first approach often yielded better results, but required more training time.
 
-Both approaches were evaluated on the [Conceptual Captions](https://aclanthology.org/P18-1238.pdf), [NoCaps](https://arxiv.org/abs/1812.08658), and [COCO](https://arxiv.org/abs/1405.0312) datasets, achieing state-of-the-art performance while requiring significantly less training time and data than previous methods. Additionally, the ClipCap architecture is simpler and faster than earlier methods.
+The authors experiment with two different training procedures for the ClipCap model pipeline. In the first approach, the CLIP model is kept static, GPT-2 is fine-tuned, and the mapping network is an MLP that is trained from scratch. In the second approach, the CLIP and GPT-2 models are kept static, and the mapping network is a transformer encoder that is trained from scratch. The authors found that the first approach often yielded better results but required more training time.
+
+Both approaches were evaluated on the [Conceptual Captions](https://aclanthology.org/P18-1238.pdf), [NoCaps](https://arxiv.org/abs/1812.08658), and [COCO](https://arxiv.org/abs/1405.0312) datasets, achieving state-of-the-art performance while requiring significantly less training time and data than previous methods. Additionally, the ClipCap architecture is more straightforward and faster than earlier methods.
 
 ### Additional Results
-Multiple other experiments were conducted to gain insight into when ClipCap performs well and when it does not. For example, the authors found that fine-tuning the LM results in a much more expressive model, but that this model is more susceptible to overfitting. Additionally, an interpretability study was conducted to further understand the model's inner workings, in which the prefix embeddings are interpreted as a sequence of tokens. It was found that the interpretation is meaningful when both the mapping network and the LM are trained, but that it becomes essentially unreadable when only the mapping network is trained. The authors hypothesize that this happens because the network is also charged with maneuvering the fixed LM.
+
+Multiple other experiments were conducted to determine when ClipCap performs well and when not. For example, the authors found that fine-tuning the LM results in a much more expressive model but that this model is more susceptible to overfitting. Additionally, an interpretability study was conducted to understand further the model's inner workings, in which the prefix embeddings are interpreted as a sequence of tokens. It was found that the interpretation is meaningful when both the mapping network and the LM are trained but that it becomes essentially unreadable when only the mapping network is trained. The authors hypothesize this happens because the network also maneuvers the fixed LM.
 
 ### Ablation Studies
-To verify and motivate ClipCap's design choices, the authors conducted multiple ablation studies. They found that the mapping network is crucial for the model's performance, and that a Transformer architecture is superior when the LM is frozen, while an MLP is more effective when also fine-tuning the LM. Furthermore, the prefix length was found to be a crucial hyperparameter; a prefix that is too short results in a lack of expressiveness, while a prefix that is too long results in a very large model that is slow to train.
+
+The authors conducted multiple ablation studies to verify and motivate ClipCap's design choices. They found that the mapping network is crucial for the model's performance and that a Transformer architecture is superior when the LM is frozen, while an MLP is more effective when also fine-tuning the LM. Furthermore, the prefix length was a crucial hyperparameter; a prefix that is too short results in a lack of expressiveness, while a prefix that is too long results in a huge model that is slow to train.
 
 ### Related Work
+
 TODO
 
 
@@ -62,7 +68,6 @@ The kNN-memory extends transformer models to memorize internal representations o
 
 Nevertheless, we encounter problems associated with long-range dependencies when expanding the captioning task to video. The caption of a video depends on all frames within that video. Using the current ClipCap architecture, frames occurring later in the sequence significantly influence the final caption. To address this issue, we propose to utilize the kNN-memory transformer framework, as proposed by [Wu et al. 2022](https://arxiv.org/abs/2203.08913).
 
-
 ## Datasets
 
 In keeping with the methodology of the ClipCap research, we will use the COCO dataset for the initial pretraining of our mapping network. Renowned for its diversity in everyday scene contexts, the COCO dataset comprises over 300,000 images, each with five associated captions. This dataset enables our model to learn from various objects and scenes, enhancing its ability to generalize and adapt to novel instances.
@@ -73,7 +78,7 @@ Following the pretraining, we will employ the [ActivityNet Captions](https://arx
 
 Videos are converted into image frames at a rate of five frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to end of each caption, treating it as an independent video clip. These frames are individually embedded using the ClipCap model, then concatenated into a single tensor. The captions are tokenized using the GPT2 tokenizer. Given that we are only finetuning the model, we will use a small subset of the dataset. The final preprocessed datasets can be accessed via the links provided in our GitHub repository. The distribution of the dataset across different categories is outlined in the table below.
 
-| **Split**   | **Train** | **Test** |
+| __Split__   | __Train__ | __Test__ |
 |-------------|-----------|----------|
 | Videos      | 300       | 100      |
 | Video Clips | ?         | ?        |
