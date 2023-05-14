@@ -51,3 +51,9 @@ Videos are converted into image frames at a rate of five frames per second (fps)
 ## Conclusion
 
 ## References
+Agrawal, Harsh et al. (2019). “Nocaps: Novel object captioning at scale”. In: Proceedings of the IEEE/CVF international conference on computer vision, pp. 8948–8957.
+Caba Heilbron, Fabian et al. (2015). “Activitynet: A large-scale video benchmark for human activity understanding”. In: Proceedings of the ieee conference on computer vision and pattern recognition, pp. 961–970.
+Lin, Tsung-Yi et al. (2014). “Microsoft coco: Common objects in context”. In: Computer Vision–ECCV 2014: 13th European Conference, Zurich, Switzerland, September 6-12, 2014, Proceedings, Part V 13. Springer, pp. 740–755.
+Sharma, Piyush et al. (2018). “Conceptual captions: A cleaned, hypernymed, image alt-text dataset for automatic image captioning”. In: Proceedings of the 56th Annual Meeting of the Association
+for Computational Linguistics (Volume 1: Long Papers), pp. 2556–2565.
+Wu, Yuhuai et al. (2022). “Memorizing Transformers”. In: International Conference on Learning Representations.
