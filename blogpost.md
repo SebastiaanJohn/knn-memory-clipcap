@@ -48,7 +48,7 @@ The authors conducted multiple ablation studies to verify and motivate ClipCap's
 
 ### Related Work
 
-TODO
+Recent advantages in supervised convolutional models have showed promising performances in image-based recognition tasks ([6](https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/Sun_Human_Action_Recognition_ICCV_2015_paper.pdf), [7](https://openaccess.thecvf.com/content_iccv_2015/papers/Tran_Learning_Spatiotemporal_Features_ICCV_2015_paper.pdf), [8](https://openaccess.thecvf.com/content_cvpr_2015/papers/Donahue_Long-Term_Recurrent_Convolutional_2015_CVPR_paper.pdf)).
 
 
 ## Expanding Multimodal Capabilities: Potential and Challenges
@@ -92,11 +92,14 @@ Videos are converted into image frames at a rate of five frames per second (fps)
 
 
 ## References
-- Agrawal, Harsh et al. (2019). “Nocaps: Novel object captioning at scale”. In: Proceedings of the IEEE/CVF international conference on computer vision, pp. 8948–8957.
-- Caba Heilbron, Fabian et al. (2015). “Activitynet: A large-scale video benchmark for human activity understanding”. In: Proceedings of the ieee conference on computer vision and pattern recognition, pp. 961–970.
-- Lin, Tsung-Yi et al. (2014). “Microsoft coco: Common objects in context”. In: Computer Vision–ECCV 2014: 13th European Conference, Zurich, Switzerland, September 6-12, 2014, Proceedings, Part V 13. Springer, pp. 740–755.
-- Sharma, Piyush et al. (2018). “Conceptual captions: A cleaned, hypernymed, image alt-text dataset for automatic image captioning”. In: Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 2556–2565.
-- Wu, Yuhuai et al. (2022). “Memorizing Transformers”. In: International Conference on Learning Representations.
+1. Agrawal, Harsh et al. (2019). “Nocaps: Novel object captioning at scale”. In: Proceedings of the IEEE/CVF international conference on computer vision, pp. 8948–8957.
+2. Caba Heilbron, Fabian et al. (2015). “Activitynet: A large-scale video benchmark for human activity understanding”. In: Proceedings of the ieee conference on computer vision and pattern recognition, pp. 961–970.
+3. Lin, Tsung-Yi et al. (2014). “Microsoft coco: Common objects in context”. In: Computer Vision–ECCV 2014: 13th European Conference, Zurich, Switzerland, September 6-12, 2014, Proceedings, Part V 13. Springer, pp. 740–755.
+4. Sharma, Piyush et al. (2018). “Conceptual captions: A cleaned, hypernymed, image alt-text dataset for automatic image captioning”. In: Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 2556–2565.
+5. Wu, Yuhuai et al. (2022). “Memorizing Transformers”. In: International Conference on Learning Representations.
+6. Sun, L., Jia, K., Yeung, D. Y., & Shi, B. E. (2015). Human action recognition using factorized spatio-temporal convolutional networks. In Proceedings of the IEEE international conference on computer vision (pp. 4597-4605).
+7. Tran, D., Bourdev, L., Fergus, R., Torresani, L., & Paluri, M. (2015). Learning spatiotemporal features with 3d convolutional networks. In Proceedings of the IEEE international conference on computer vision (pp. 4489-4497).
+8. Donahue, J., Anne Hendricks, L., Guadarrama, S., Rohrbach, M., Venugopalan, S., Saenko, K., & Darrell, T. (2015). Long-term recurrent convolutional networks for visual recognition and description. In Proceedings of the IEEE conference on computer vision and pattern recognition (pp. 2625-2634).
 
 ## Contributions
 <!-- Close the notebook with a description of each student's contribution. -->
