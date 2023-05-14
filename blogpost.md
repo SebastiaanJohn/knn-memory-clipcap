@@ -12,7 +12,7 @@
     - [Weaknesses](#weaknesses)
   - [Our contribution: Utilizing Memorizing Transformers for Improved Long-Range Dependency Handling](#our-contribution-utilizing-memorizing-transformers-for-improved-long-range-dependency-handling)
   - [Datasets](#datasets)
-    - [Preprocessing](#preprocessing)
+    - [Pre-processing](#pre-processing)
   - [Results](#results)
   - [Conclusion](#conclusion)
   - [References](#references)
@@ -65,17 +65,18 @@ The Memorizing Transformer extends the original [Transformer](https://arxiv.org/
 
 
 ## Datasets
-In keeping with the methodology of the ClipCap research, we will use the COCO dataset for the initial pretraining of our mapping network. Renowned for its diversity in everyday scene contexts, the COCO dataset comprises over 300,000 images, each with five associated captions. This dataset enables our model to learn from various objects and scenes, enhancing its ability to generalize and adapt to novel instances.
+In line with the methodology of ClipCap, we will use the COCO dataset for the initial pretraining stage of our mapping network. This allows the model to learn a general understanding of the relationship between images and text.
 
-Following the pretraining, we will employ the [ActivityNet Captions](https://arxiv.org/pdf/1705.00754v1.pdf) dataset for finetuning. The ActivityNet Captions dataset provides a more task-specific data source explicitly designed for the temporal localization and captioning of activities. With 20,000 videos sourced from YouTube, amounting to 849 hours of footage, accompanied by 100,000 detailed descriptions of sequences of actions within the videos, it presents an optimal choice for our research.
+Following the pretraining, we will employ the [ActivityNet Captions](https://arxiv.org/pdf/1705.00754v1.pdf) dataset for fine-tuning. The ActivityNet Captions dataset provides a more task-specific data source explicitly designed for captioning temporally spread-out activities in videos. It contains 20k videos with 100k detailed descriptions of sequences of events within them, making it an optimal choice for our research.
 
-### Preprocessing
-Videos are converted into image frames at a rate of five frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to end of each caption, treating it as an independent video clip. These frames are individually embedded using the ClipCap model, then concatenated into a single tensor. The captions are tokenized using the GPT2 tokenizer. Given that we are only finetuning the model, we will use a small subset of the dataset. The final preprocessed datasets can be accessed via the links provided in our GitHub repository. The distribution of the dataset across different categories is outlined in the table below.
+### Pre-processing
+Videos are converted into image frames at a rate of 5 frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to the end of each captioned segment, treating each as an independent _video clip_. The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use a small subset of ActivityNet Captions. The final pre-processed datasets can be downloaded with the links provided in our [GitHub repository](https://github.com/SebastiaanJohn/knn-memory-clipcap). Some statistics of the dataset splits we used for training and testing are shown below.
 
-| __Split__   | __Train__ | __Test__ |
+|             | __Train__ | __Test__ |
 |-------------|-----------|----------|
 | Videos      | 300       | 100      |
-| Video Clips | ?         | ?        |
+| Video clips | 1112      | 371      |
+| Frames      | 198020    | 69731    |
 
 
 ## Results
