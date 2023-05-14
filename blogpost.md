@@ -1,35 +1,67 @@
 # Enhancing Long-Range Dependency Management: A Comprehensive Study on the Integration of kNN-Memory and ClipCap Techniques
 
+- [Enhancing Long-Range Dependency Management: A Comprehensive Study on the Integration of kNN-Memory and ClipCap Techniques](#enhancing-long-range-dependency-management-a-comprehensive-study-on-the-integration-of-knn-memory-and-clipcap-techniques)
+  - [Introduction](#introduction)
+    - [ClipCap Summary](#clipcap-summary)
+    - [Main results](#main-results)
+    - [Additional Results](#additional-results)
+    - [Ablation Studies](#ablation-studies)
+    - [Related Work](#related-work)
+  - [Expanding Multimodal Capabilities: Potential and Challenges](#expanding-multimodal-capabilities-potential-and-challenges)
+  - [Utilizing Memory for Enhanced Long-Range Dependency Management](#utilizing-memory-for-enhanced-long-range-dependency-management)
+  - [Datasets](#datasets)
+    - [Preprocessing](#preprocessing)
+  - [Results](#results)
+  - [Conclusion](#conclusion)
+  - [References](#references)
+  - [Contributions](#contributions)
+
+
 ## Introduction
+<!-- Introduction: An analysis of the paper and its key components. Think about it as a nicely formatted review as you would see on OpenReview.net. It should contain one paragraph of related work as well. -->
+Image captioning is a multimodal task that involves generating textual descriptions of images. This research investigates a method called [ClipCap](https://arxiv.org/abs/2111.09734), which was explicitly proposed for this task, and explores the potential of enhancing this method by integrating long-range dependency handling into the model.
 
-_Image captioning_ is a multimodal task that involves generating textual descriptions of images. This research investigates a method called [ClipCap](https://arxiv.org/abs/2111.09734), explicitly proposed for this task.
+### ClipCap Summary
+The ClipCap method utilizes a pipeline of pre-trained models to generate captions for images. This pipeline consists of the [CLIP](https://arxiv.org/abs/2103.00020) model, a mapping network, and a pre-trained language model (LM), namely [GPT-2](https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf). The CLIP image encoder extracts high-level information from the visual data, while the pre-trained LM generates the caption. The mapping network serves as a bridge between the two, linking the latent spaces of the two models.
 
-Previous methods proposed for this task relied on encoder-decoder frameworks, which are resource-intensive in terms of time and dataset size. A new model pipeline, ClipCap, was introduced to overcome these challenges. The ClipCap model pipeline utilizes pre-trained models, specifically CLIP and GPT2, to deliver superior performance in a computationally efficient manner. The CLIP model extracts semantic information from visual data, while the GPT2 model serves as a decoder to generate the textual description. In training the ClipCap model pipeline, the GPT2 model is fine-tuned, and the CLIP model is kept static. This approach conserves resources while simultaneously leveraging the expressiveness and adaptability of the GPT2 model to new tasks.
-Nonetheless, a bridge between the image and text modalities is still necessary. To create this connection, a mapping network, a multi-layered perceptron (MLP), is trained to link the latent spaces of CLIP and GPT2. The original authors also considered an alternative version of the ClipCap model pipeline, where only the mapping network is trained, and the CLIP and GPT2 models are kept static. This version was found to be comparable to state-of-the-art performance, but it is not explored in this research.
+More specifically, for a given image, the CLIP image encoder generates an embedding containing high-level information about the image. This embedding is passed through the mapping network to obtain a so-called "prefix", a list of embeddings associated with the image content. Finally, the prefix embeddings are used as input to GPT-2, which will generate the caption in an autoregressive manner.
 
-During the training phase, the CLIP encoder (pre-trained on image-text pairs using contrastive loss) extracts embeddings from the visual data, encapsulating semantic information about the image. These embeddings are subsequently processed through the mapping network to obtain prefix embeddings containing salient words associated with the image content. The prefix embeddings are merged with the caption embeddings - the output of the GPT tokenizer - and the combined embeddings are passed through the GPT2 decoder to generate the textual description of the image.
+<!-- ### Motivation
 
-During inference, the ClipCap model pipeline generates captions by predicting one token at a time, guided by the GPT2 model. This model utilizes a greedy approach, which predicts a probability for all tokens in the vocabulary for each token.
+Moreover, the ClipCap model pipeline is modular, allowing for the swift adaptation or replacement of the CLIP endoder and GPT-2 decoder models. This feature enables the pipeline model to be easily adapted for different tasks, but this capability was not explored in the original paper. This coud be a nice aspect to review in ablation studies to understand the model's underlying mechanisms better. -->
 
-The performance of the ClipCap model pipeline was evaluated using three datasets: [Conceptual Captions](https://aclanthology.org/P18-1238.pdf), [NoCaps](https://arxiv.org/abs/1812.08658), and [(Common Objects in Context) COCO](https://arxiv.org/abs/1405.0312). These datasets were curated to represent a wide array of visual concepts. The ClipCap model pipeline demonstrated excellent performance with the Conceptual Captions and NoCaps datasets, thereby establishing itself as an efficient and effective solution for image captioning. Moreover, given its training on diverse images, the ClipCap model pipeline was found to generalize well to randomly chosen new images.
+### Main results
+The authors experiment with two different training procedures for the ClipCap model pipeline. In the first approach, the CLIP model is kept static, GPT-2 is fine-tuned, and the mapping network is an MLP that is trained from scratch. In the second approach, the CLIP and GPT-2 models are kept static, and the mapping network is a transformer encoder that is is trained from scratch. The authors found that the first approach often yielded better results, but required more training time.
 
-In conclusion, the ClipCap model pipeline is a swift, user-friendly, and efficient solution for image captioning that achieves state-of-the-art performance across multiple datasets.
+Both approaches were evaluated on the [Conceptual Captions](https://aclanthology.org/P18-1238.pdf), [NoCaps](https://arxiv.org/abs/1812.08658), and [COCO](https://arxiv.org/abs/1405.0312) datasets, achieing state-of-the-art performance while requiring significantly less training time and data than previous methods. Additionally, the ClipCap architecture is simpler and faster than earlier methods.
+
+### Additional Results
+Multiple other experiments were conducted to gain insight into when ClipCap performs well and when it does not. For example, the authors found that fine-tuning the LM results in a much more expressive model, but that this model is more susceptible to overfitting. Additionally, an interpretability study was conducted to further understand the model's inner workings, in which the prefix embeddings are interpreted as a sequence of tokens. It was found that the interpretation is meaningful when both the mapping network and the LM are trained, but that it becomes essentially unreadable when only the mapping network is trained. The authors hypothesize that this happens because the network is also charged with maneuvering the fixed LM.
+
+### Ablation Studies
+To verify and motivate ClipCap's design choices, the authors conducted multiple ablation studies. They found that the mapping network is crucial for the model's performance, and that a Transformer architecture is superior when the LM is frozen, while an MLP is more effective when also fine-tuning the LM. Furthermore, the prefix length was found to be a crucial hyperparameter; a prefix that is too short results in a lack of expressiveness, while a prefix that is too long results in a very large model that is slow to train.
+
+### Related Work
+TODO
+
 
 ## Expanding Multimodal Capabilities: Potential and Challenges
-
+<!-- Exposition of its weaknesses/strengths/potential which triggered your group to come up with a response. -->
 One of the key strengths of the pipeline model proposed in the ClipCap paper is its multimodal nature. This model utilizes information from images and text for the caption generation task, capitalizing on a mapping network to facilitate a more comprehensive understanding and exploitation of available data resources. Combining the CLIP model with a pre-trained language model in a multimodal pipeline yields more comprehensive and competent captions. It ensures that training costs (both in terms of training time and required data volume) remain low. The authors have effectively utilized powerful pre-trained models, resulting in a simple method that requires no additional annotations and is quick to train. Moreover, the proposed image-captioning method comprises multiple self-contained components (CLIP model, mapping network, pre-trained language model), allowing for the swift adaptation or replacement of these components by different models. This feature enables the pipeline model to be easily adapted for different tasks or used in ablation studies to understand the model's underlying mechanisms better.
 
-However, the proposed captioning method needs to consider the dependencies' duration between data resources adequately. Visual data, such as video segments, naturally have long-range dependencies between individual frames within a single video (for example, the first frame in a video may not match the last frame, yet some dependency still exists between the two). Ignoring such long-range dependencies in the proposed pipeline model could result in a model incapable of achieving state-of-the-art captioning performances. 
+However, the proposed captioning method needs to consider the dependencies' duration between data resources adequately. Visual data, such as video segments, naturally have long-range dependencies between individual frames within a single video (for example, the first frame in a video may not match the last frame, yet some dependency still exists between the two). Ignoring such long-range dependencies in the proposed pipeline model could result in a model incapable of achieving state-of-the-art captioning performances.
 
 Our research aims to address this issue by modifying the original ClipCap model to account for long-range dependencies in the visual data, achieved by incorporating a memory attribute into the mapping network. Additionally, as previously mentioned, the modular architecture of the ClipCap model allows for the potential of an ablation study, which we plan to utilize in conjunction with our earlier adaptations in the mapping network.
 
-## Utilizing Memory for Enhanced Long-Range Dependency Management
 
+## Utilizing Memory for Enhanced Long-Range Dependency Management
+<!-- Describe your novel contribution. -->
 Our research investigates potential performance enhancements in video captioning by integrating long-range dependencies by applying [kNN-memory](https://arxiv.org/abs/2203.08913) in the ClipCap pipeline.
 
 The kNN-memory extends transformer models to memorize internal representations of past inputs, aiming to improve the performance of language modeling tasks. The memory system utilizes an approximate kNN lookup to recall the most recent key-value pairs. This strategy enables the model to harness learned information from previously encountered data for current predictions, thereby accounting for long-range dependencies. The original paper applies this concept to language models, effectively addressing the issue of long-term dependencies. However, in the context of image captioning, this problem is less pertinent. The captions for images are succinct enough that the lack of long-term dependency handling does not significantly impact the outcome.
 
 Nevertheless, we encounter problems associated with long-range dependencies when expanding the captioning task to video. The caption of a video depends on all frames within that video. Using the current ClipCap architecture, frames occurring later in the sequence significantly influence the final caption. To address this issue, we propose to utilize the kNN-memory transformer framework, as proposed by [Wu et al. 2022](https://arxiv.org/abs/2203.08913).
+
 
 ## Datasets
 
@@ -46,8 +78,16 @@ Videos are converted into image frames at a rate of five frames per second (fps)
 | Videos      | 300       | 100      |
 | Video Clips | ?         | ?        |
 
+
 ## Results
+<!-- Results of your work (link that part with the code in the jupyter notebook) -->
+
 
 ## Conclusion
 
+
 ## References
+
+
+## Contributions
+<!-- Close the notebook with a description of each student's contribution. -->
