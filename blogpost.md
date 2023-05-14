@@ -48,7 +48,7 @@ The authors conducted multiple ablation studies to verify and motivate ClipCap's
 
 ### Related Work
 
-Recent advantages in supervised convolutional models have showed promising performances in image-based recognition tasks ([6](https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/Sun_Human_Action_Recognition_ICCV_2015_paper.pdf), [7](https://openaccess.thecvf.com/content_iccv_2015/papers/Tran_Learning_Spatiotemporal_Features_ICCV_2015_paper.pdf), [8](https://openaccess.thecvf.com/content_cvpr_2015/papers/Donahue_Long-Term_Recurrent_Convolutional_2015_CVPR_paper.pdf)). However, these learned features do not 
+Recent advantages in supervised convolutional models have showed promising performances in image-based recognition tasks ([6](https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/Sun_Human_Action_Recognition_ICCV_2015_paper.pdf), [7](https://openaccess.thecvf.com/content_iccv_2015/papers/Tran_Learning_Spatiotemporal_Features_ICCV_2015_paper.pdf), [8](https://openaccess.thecvf.com/content_cvpr_2015/papers/Donahue_Long-Term_Recurrent_Convolutional_2015_CVPR_paper.pdf)). 
 
 
 ## Expanding Multimodal Capabilities: Potential and Challenges
