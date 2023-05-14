@@ -40,8 +40,7 @@ Multiple other experiments were conducted to determine when ClipCap performs wel
 The authors conducted multiple ablation studies to verify and motivate ClipCap's design choices. They found that the mapping network is crucial for the model to perform well and that a Transformer architecture is superior when the LM is frozen, while an MLP is more effective when the LM is additionally fine-tuned. Furthermore, the prefix length was a crucial hyperparameter; a prefix that is too short results in a lack of expressiveness, while a prefix that is too long results in a very large model that will be slow to train.
 
 ### Related Work
-Recent advantages in supervised convolutional models have shown promising accomplishments in image-based recognition tasks ([6](https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/Sun_Human_Action_Recognition_ICCV_2015_paper.pdf), [7](https://openaccess.thecvf.com/content_iccv_2015/papers/Tran_Learning_Spatiotemporal_Features_ICCV_2015_paper.pdf), [8](https://openaccess.thecvf.com/content_cvpr_2015/papers/Donahue_Long-Term_Recurrent_Convolutional_2015_CVPR_paper.pdf)).
-
+Previous works have explored both image-based and video-based recognition tasks. Advances in LSTMs ([9](https://ieeexplore.ieee.org/abstract/document/7984828?casa_token=tmveUf25t1YAAAAA:lA57sykKCMVgMyWyhWtJLkrd-6zCYp5IoEpaBG0LakMX6YBSM85iausLxGG9UVO0sJI-_RW5)), spatiotemporal feature learning for 3D convolutional networks ([7](https://ieeexplore.ieee.org/document/7410867), [6](https://arxiv.org/abs/1510.00562)), and in long-term recurrent convolutional networks ([8](https://arxiv.org/abs/1510.00562)) have yielded models capable of generating captions for both images and videos. However, these models are computationally heavy and require large amounts of data. Other proposed methods utilize vision and language pre-training in combination with the BERT architecture ([10](https://arxiv.org/pdf/2111.09734.pdf), [11](https://aclanthology.org/N19-1423/), [12](https://arxiv.org/abs/2101.00529), [13](https://ojs.aaai.org/index.php/AAAI/article/view/7005), [14](https://arxiv.org/abs/2108.10904)). However, these methods are either restricted to certain specific datasets ([10](https://arxiv.org/pdf/2111.09734.pdf), [12](https://arxiv.org/abs/2101.00529), [13](https://ojs.aaai.org/index.php/AAAI/article/view/7005)), resulting in a loss of generalization, or have a pre-training process that is computationally heavy ([14](https://arxiv.org/abs/2108.10904)).
 
 ## Exploring ClipCap's Capabilities: Potential and Challenges
 <!-- Exposition of its weaknesses/strengths/potential which triggered your group to come up with a response. -->
@@ -87,14 +86,20 @@ Videos are converted into image frames at a rate of 5 frames per second (fps). S
 
 
 ## References
-1. Agrawal, Harsh et al. (2019). “Nocaps: Novel object captioning at scale”. In: Proceedings of the IEEE/CVF international conference on computer vision, pp. 8948–8957.
-2. Caba Heilbron, Fabian et al. (2015). “Activitynet: A large-scale video benchmark for human activity understanding”. In: Proceedings of the ieee conference on computer vision and pattern recognition, pp. 961–970.
-3. Lin, Tsung-Yi et al. (2014). “Microsoft coco: Common objects in context”. In: Computer Vision–ECCV 2014: 13th European Conference, Zurich, Switzerland, September 6-12, 2014, Proceedings, Part V 13. Springer, pp. 740–755.
-4. Sharma, Piyush et al. (2018). “Conceptual captions: A cleaned, hypernymed, image alt-text dataset for automatic image captioning”. In: Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 2556–2565.
-5. Wu, Yuhuai et al. (2022). “Memorizing Transformers”. In: International Conference on Learning Representations.
-6. Sun, L., Jia, K., Yeung, D. Y., & Shi, B. E. (2015). Human action recognition using factorized spatio-temporal convolutional networks. In Proceedings of the IEEE international conference on computer vision (pp. 4597-4605).
-7. Tran, D., Bourdev, L., Fergus, R., Torresani, L., & Paluri, M. (2015). Learning spatiotemporal features with 3d convolutional networks. In Proceedings of the IEEE international conference on computer vision (pp. 4489-4497).
-8. Donahue, J., Anne Hendricks, L., Guadarrama, S., Rohrbach, M., Venugopalan, S., Saenko, K., & Darrell, T. (2015). Long-term recurrent convolutional networks for visual recognition and description. In Proceedings of the IEEE conference on computer vision and pattern recognition (pp. 2625-2634).
+1. Agrawal, Harsh et al. (2019). “Nocaps: Novel object captioning at scale”. In: Proceedings of the IEEE/CVF international conference on computer vision (pp. 8948–8957).
+2. Caba Heilbron, Fabian et al. (2015). “Activitynet: A large-scale video benchmark for human activity understanding”. In: Proceedings of the ieee conference on computer vision and pattern recognition (pp. 961–970).
+3. Lin, T et al. (2014). “Microsoft coco: Common objects in context”. In: Computer Vision–ECCV 2014: 13th European Conference, Zurich, Switzerland, September 6-12, 2014 (pp. 740–755).
+4. Sharma, P. et al. (2018). “Conceptual captions: A cleaned, hypernymed, image alt-text dataset for automatic image captioning”. In: Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (pp. 2556–2565).
+5. Wu, Y. et al. (2022). “Memorizing Transformers”. In: International Conference on Learning Representations.
+6. Sun, L. et al. (2015). "Human action recognition using factorized spatio-temporal convolutional networks". In: Proceedings of the IEEE international conference on computer vision (pp. 4597-4605).
+7. Tran, D. et al. (2015). "Learning Spatiotemporal Features with 3D Convolutional Networks". In: Proceedings of the IEEE international conference on computer vision (pp. 4489-4497).
+8. Donahue, J.et al. (2015). "Long-term recurrent convolutional networks for visual recognition and description". In: Proceedings of the IEEE conference on computer vision and pattern recognition (pp. 2625-2634).
+9. Gao, L. et al. (2017). "Video Captioning With Attention-Based LSTM and Semantic Consistency". In: IEEE Transactions on Multimedia (pp. 2045-2055).
+10. Li, X. et al. (2020). "Oscar: Object-semantics aligned pre-training for vision-language tasks". In: European Conference on Computer Vision (pp. 121–137).
+11. Devlin, J., Chang, M., Lee, K. and Toutanova, K. (2018). "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding". 
+12. Pengchuan Zhang et al. (2021). "VinVL: Revisiting visual representations in vision-language models". In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (pp. 5579–5588).
+13. Zhou, L. et al. (2020). "Unified vision-language pretraining for image captioning and VQA". In: Proceedings of the AAAI Conference on Artificial Intelligence (pp. 13041–13049).
+14. Wang, Z. (2021). "SimVLM: Simple Visual Language Model Pretraining with Weak Supervision".
 
 ## Contributions
 <!-- Close the notebook with a description of each student's contribution. -->
