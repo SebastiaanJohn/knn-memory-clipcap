@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import Iterable
 
-from datasets import load_dataset
+from dataset import load_dataset
 from pytube import YouTube
 from pytube.exceptions import VideoUnavailable
 from tqdm import tqdm

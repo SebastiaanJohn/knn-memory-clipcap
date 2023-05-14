@@ -5,10 +5,12 @@ import json
 import os
 import pickle
 import sys
-
 import torch
 import torch.nn as nn
+
+from dataset.activitynet import ActivityNetDataset
 from memorizing_transformers_pytorch import MemorizingTransformer
+
 from torch.nn import functional as nnf
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
@@ -138,29 +140,55 @@ class ClipCocoDataset(Dataset):
 
 
 class MemoryTransformer(nn.Module):
-    """A memorizing transformer module."""
-
+    """The memorizing transformer module."""
     def __init__(
-        self, dim_self: int, num_heads: int, num_layers: int, batch_size: int
+        self,
+        dim_self: int,
+        num_heads: int,
+        num_layers: int,
+        batch_size: int,
+        memorizing_layers: tuple[int, ...],
+        max_knn_memories: int,
+        num_retrieved_memories: int
     ) -> None:
-        """Initialize the memorizing transformer."""
+        """Initialize the memorizing transformer.
+
+        Args:
+            dim_self (int): The dimension of the self-attention.
+            num_heads (int): The number of heads.
+            num_layers (int): The number of layers.
+            batch_size (int): The batch size.
+                Each batch keeps track of its own memories.
+            memorizing_layers (tuple[int, ...]): The layers which have memories.
+            max_knn_memories (int): The maximum amount of memories to keep.
+            num_retrieved_memories (int): The number of memories to retrieve.
+        """
         super(MemoryTransformer, self).__init__()
-        self.batch_size = batch_size
+        self.bs = batch_size
         self.model = MemorizingTransformer(
-            dim=dim_self,  # dimension
-            dim_head=dim_self // num_heads,  # dimension per attention head
-            depth=num_layers,  # number of layers
-            memorizing_layers=(4, 5),  # which layers to have ANN memories
-            max_knn_memories=64000,  # maximum ANN memories to keep
-            num_retrieved_memories=32,  # number of ANN memories to retrieve
+            dim = dim_self,
+            dim_head = dim_self // num_heads,
+            depth = num_layers,
+            memorizing_layers = memorizing_layers,
+            max_knn_memories = max_knn_memories,
+            num_retrieved_memories = num_retrieved_memories,
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """The forward pass."""
-        with self.model.knn_memories_context(
-            batch_size=self.batch_size
-        ) as knn_memories:
-            return self.model(x, knn_memories)
+    def forward(self, x: torch.Tensor, batch_indices: list | None) -> torch.Tensor:
+        """The forward pass.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+            batch_indices (list | None): The batch indices for which the
+                memories must be cleared at the end of this forward pass.
+                If None, all memories will be cleared.
+        Returns:
+            torch.Tensor: The output tensor.
+        """
+        with self.model.knn_memories_context(batch_size = self.bs) as knn_memories:
+            x = self.model(x, knn_memories)
+            knn_memories.clear_memory(batch_indices)
+            return x
 
 
 class TransformerMapper(nn.Module):
@@ -173,61 +201,87 @@ class TransformerMapper(nn.Module):
         prefix_length: int,
         clip_length: int,
         batch_size: int,
-        num_layers: int = 8,
+        num_layers: int,
+        num_heads: int,
+        memorizing_layers: tuple[int, ...],
+        max_knn_memories: int,
+        num_retrieved_memories: int
     ) -> None:
         """Initialize the transformer mapper.
 
         Args:
-            dim_clip (int): The dimension of the clip.
-            dim_embedding (int): The dimension of the embedding space.
+            dim_clip (int): The dimension of the clip embeddings.
+            dim_embedding (int): The dimension of the gpt embeddings.
             prefix_length (int): The length of the prefix.
-            clip_length (int): The length of the clip.
-            num_layers (int, optional): The number of layers. Defaults to 8.
+            clip_length (int): The length of the prefix.
+            batch_size (int): The number of batches per input.
+            num_layers (int, optional): The number of layers.
+            num_heads (int): The number of heads.
+            memorizing_layers (tuple[int, ...]): The layers which have memories.
+            max_knn_memories (int): The maximum amount of memories to keep.
+            num_retrieved_memories (int): The number of memories to retrieve.
         """
         super(TransformerMapper, self).__init__()
         self.clip_length = clip_length
         self.transformer = MemoryTransformer(
-            dim_embedding, 8, num_layers, batch_size
+            dim_embedding, num_heads, num_layers, batch_size,
+            memorizing_layers, max_knn_memories, num_retrieved_memories
         )
         self.linear = nn.Linear(dim_clip, clip_length * dim_embedding)
         self.prefix_const = nn.Parameter(
             torch.randn(prefix_length, dim_embedding), requires_grad=True
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """The forward pass."""
+    def forward(
+            self,
+            x: torch.Tensor,
+            batch_indices: list | None = None
+    ) -> torch.Tensor:
+        """The forward pass.
+
+        Args:
+            x (torch.Tensor).
+            batch_indices (optional, list | None). Defaults to None
+        Returns:
+            torch.Tensor.
+        """
         x = self.linear(x).view(x.shape[0], self.clip_length, -1)
         prefix = self.prefix_const.unsqueeze(0).expand(
             x.shape[0], *self.prefix_const.shape
         )
         prefix = torch.cat((x, prefix), dim=1)
-        out = self.transformer(prefix)[:, self.clip_length :]
+        out = self.transformer(prefix, batch_indices)[:, self.clip_length :]
 
         return out
 
 
 class ClipCaptionModel(nn.Module):
-    """The model for ClipCap."""
+    """The ClipCap model."""
 
     def __init__(
         self,
         prefix_length: int,
         batch_size: int,
-        clip_length: int | None = None,
-        prefix_size: int = 512,
-        num_layers: int = 8,
+        clip_length: int | None,
+        prefix_size: int,
+        num_layers: int,
+        num_heads: int,
+        memorizing_layers: tuple[int, ...],
+        max_knn_memories: int,
+        num_retrieved_memories: int
     ) -> None:
         """Initialize the model.
 
         Args:
             prefix_length (int): The length of the prefix.
-            clip_length (int | None, optional): The length of the clip.
-                Defaults to None.
-            prefix_size (int, optional): The size of the prefix. Defaults to
-                512.
-            num_layers (int, optional): The number of layers. Defaults to 8.
-            mapping_type (MappingType, optional): The type of the mapping.
-                Defaults to MappingType.MLP.
+            batch_size (int): The number of batches per input.
+            clip_length (int | None): The length of the prefix.
+            prefix_size (int): The dimension of the prefix embeddings.
+            num_layers (int): The number of layers.
+            num_heads (int): The number of heads.
+            memorizing_layers (tuple[int, ...]): The layers which have memories.
+            max_knn_memories (int): The maximum amount of memories to keep.
+            num_retrieved_memories (int): The number of memories to retrieve.
         """
         super(ClipCaptionModel, self).__init__()
         self.prefix_length = prefix_length
@@ -240,6 +294,10 @@ class ClipCaptionModel(nn.Module):
             clip_length,
             batch_size,
             num_layers,
+            num_heads,
+            memorizing_layers,
+            max_knn_memories,
+            num_retrieved_memories
         )
 
     # @functools.lru_cache #FIXME
@@ -294,7 +352,7 @@ class ClipCaptionModel(nn.Module):
 
 
 class ClipCaptionPrefix(ClipCaptionModel):
-    """The ClipCap model with a prefix."""
+    """The ClipCap model without fine-tuning gpt."""
 
     def parameters(self, recurse: bool = True):
         """The parameters of the model.
@@ -372,7 +430,7 @@ def load_model(
 
 
 def train(
-    dataset: ClipCocoDataset,
+    dataset : ClipCocoDataset | ActivityNetDataset,
     model: ClipCaptionModel,
     args: argparse.Namespace,
     lr: float = 2e-5,
@@ -383,7 +441,7 @@ def train(
     """Train the model.
 
     Args:
-        dataset (ClipCocoDataset): The dataset to use.
+        dataset (ClipCocoDataset | ActivityNetDataset): The dataset to use.
         model (ClipCaptionModel): The model to train.
         args (argparse.Namespace): The arguments.
         lr (float, optional): The learning rate. Defaults to 2e-5.
@@ -406,9 +464,14 @@ def train(
 
     optimizer = AdamW(model.parameters(), lr=lr)
 
-    train_dataloader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=True, drop_last=True
-    )
+    if args.use_video_dataset:
+        train_dataloader = DataLoader(
+            dataset, batch_size=batch_size, shuffle=False, drop_last=False
+        )
+    else:
+        train_dataloader = DataLoader(
+            dataset, batch_size=batch_size, shuffle=True, drop_last=True
+        )
 
     scheduler = get_linear_schedule_with_warmup(
         optimizer,
@@ -422,15 +485,46 @@ def train(
         print(f">>> Training epoch {epoch}")
         sys.stdout.flush()
         progress = tqdm(total=len(train_dataloader), desc=output_prefix)
-        for idx, (tokens, mask, prefix) in enumerate(train_dataloader):
+        for i, (tokens, mask, prefix) in enumerate(train_dataloader):
             model.zero_grad()
             tokens, mask, prefix = (
                 tokens.to(device),
                 mask.to(device),
                 prefix.to(device, dtype=torch.float32),
             )
-            outputs = model(tokens, prefix, mask)
-            logits = outputs.logits[:, dataset.prefix_length - 1 : -1]
+
+            if args.use_video_dataset:
+                # Compute the batch indices of those frames
+                # that are the last in a sequence.
+                contains_caption = (mask == 1).any(dim=1)
+                idx = contains_caption.nonzero(as_tuple=True)[0].tolist()
+
+                # Compute the forward pass of the TransformerMapper
+                # on all frames in the batch, thereby storing new memories.
+                # Use the batch indices to clear memories of videos
+                # after generating a prefix for their last frame.
+                prefix_projections = model.clip_project(prefix, idx).view(
+                    -1, model.prefix_length, model.gpt_embedding_size
+                )
+
+                # Continue the forward and backward pass of the ClipCaptionModel
+                # with only those frames which are the last in a sequence
+                # and therefore have a caption. If there are none, continue.
+
+                if len(idx) == 0:
+                    progress.update()
+                    continue
+
+                tokens, mask, prefix, prefix_projections =  \
+                    tokens[idx], mask[idx], prefix[idx], prefix_projections[idx]
+
+                embedding_text = model.gpt.transformer.wte(tokens)
+                embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
+                outputs = model.gpt(inputs_embeds=embedding_cat, attention_mask=mask)
+            else:
+                outputs = model(tokens, prefix, mask)
+
+            logits = outputs.logits[:, model.prefix_length - 1 : -1]
             loss = nnf.cross_entropy(
                 logits.reshape(-1, logits.shape[-1]),
                 tokens.flatten(),
@@ -442,7 +536,7 @@ def train(
             optimizer.zero_grad()
             progress.set_postfix({"loss": loss.item()})
             progress.update()
-            if (idx + 1) % 10000 == 0:
+            if (i + 1) % 10000 == 0:
                 torch.save(
                     model.state_dict(),
                     os.path.join(output_dir, f"{output_prefix}_latest.pt"),
@@ -475,35 +569,54 @@ def main() -> None:
         "--only_prefix", dest="only_prefix", action="store_true"
     )
     parser.add_argument("--num_layers", type=int, default=8)
-    parser.add_argument("--is_rn", dest="is_rn", action="store_true")
     parser.add_argument(
         "--normalize_prefix", dest="normalize_prefix", action="store_true"
     )
+    parser.add_argument(
+        "--use_video_dataset", dest="use_video_dataset", action="store_true"
+    )
+    parser.add_argument("--num_heads", type=int, default=8)
+    parser.add_argument("--memorizing_layers", type=tuple, default=(4,5))
+    parser.add_argument("--max_knn_memories", type=int, default=64000)
+    parser.add_argument("--num_retrieved_memories", type=int, default=32)
 
     args = parser.parse_args()
 
     prefix_length = args.prefix_length
-    dataset = ClipCocoDataset(
-        args.data, prefix_length, normalize_prefix=args.normalize_prefix
-    )
-    prefix_dim = 640 if args.is_rn else 512
+
+    if args.use_video_dataset:
+        dataset = ActivityNetDataset(args.data, args.bs, prefix_length)
+    else:
+        dataset = ClipCocoDataset(
+            args.data, prefix_length, normalize_prefix=args.normalize_prefix
+        )
+
+    prefix_dim = 512
 
     if args.only_prefix:
         model = ClipCaptionPrefix(
             prefix_length,
-            batch_size=args.bs,
+            batch_size = args.bs,
             clip_length=args.prefix_length_clip,
             prefix_size=prefix_dim,
             num_layers=args.num_layers,
+            num_heads = args.num_heads,
+            memorizing_layers = args.memorizing_layers,
+            max_knn_memories = args.max_knn_memories,
+            num_retrieved_memories = args.num_retrieved_memories
         )
         print("Train only prefix")
     else:
         model = ClipCaptionModel(
             prefix_length,
-            batch_size=args.bs,
+            batch_size = args.bs,
             clip_length=args.prefix_length_clip,
             prefix_size=prefix_dim,
             num_layers=args.num_layers,
+            num_heads = args.num_heads,
+            memorizing_layers = args.memorizing_layers,
+            max_knn_memories = args.max_knn_memories,
+            num_retrieved_memories = args.num_retrieved_memories
         )
         print("Train both prefix and GPT")
         sys.stdout.flush()
