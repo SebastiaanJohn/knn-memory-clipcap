@@ -76,6 +76,7 @@ Videos are converted into image frames at a rate of 5 frames per second (fps). S
 | Videos      | 300       | 100      |
 | Video clips | 1112      | 371      |
 | Frames      | 198020    | 69731    |
+| Length (hours) | 275    | 97       |
 
 
 ## Results
