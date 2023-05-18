@@ -62,9 +62,13 @@ def train(
 
     optimizer = AdamW(model.parameters(), lr=lr)
 
-    if args.use_video_dataset:
+    if args.use_activitynet:
         train_dataloader = DataLoader(
             dataset, batch_size=batch_size, shuffle=False, drop_last=False
+        )
+    elif args.use_activitynet_last_frame:
+        train_dataloader = DataLoader(
+            dataset, batch_size=batch_size, shuffle=True, drop_last=True
         )
     else:
         train_dataloader = DataLoader(
