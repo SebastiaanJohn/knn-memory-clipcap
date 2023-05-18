@@ -167,7 +167,9 @@ tensorboard.sh
 *.pdf
 
 # Project-specific files (e.g. datasets, models, etc.)
-src/clipcap/models/*.pt
-data/*
+src/data/*
 *.mp4
 src/datasets/pytube/__cache__
+checkpoints/*.pt
+checkpoints/*.json
+.tmp
