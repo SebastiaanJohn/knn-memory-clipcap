@@ -1,6 +1,7 @@
 """Training script for CLIPCAP model."""
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -9,19 +10,18 @@ import torch
 from dataset.activitynet import ActivityNetDataset
 from dataset.activitynet_last_frame import ActivityNetLastFrameDataset
 from dataset.coco import ClipCocoDataset
+from inference.inference import generate_beam
 from models.clipcap import ClipCaptionModel, ClipCaptionPrefix
 from torch.nn import functional as nnf
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import (
-    AdamW,
-    get_linear_schedule_with_warmup,
-)
+from transformers import AdamW, get_linear_schedule_with_warmup, GPT2Tokenizer
 from utils import save_config
 
 
 def train(
-    dataset : ClipCocoDataset | ActivityNetDataset,
+    dataset : ClipCocoDataset | ActivityNetDataset
+            | ActivityNetLastFrameDataset,
     model: ClipCaptionModel,
     args: argparse.Namespace,
     lr: float = 2e-5,
@@ -32,7 +32,8 @@ def train(
     """Train the model.
 
     Args:
-        dataset (ClipCocoDataset | ActivityNetDataset): The dataset to use.
+        dataset (ClipCocoDataset | ActivityNetDataset
+            | ActivityNetLastFrameDataset): The dataset to use.
         model (ClipCaptionModel): The model to train.
         args (argparse.Namespace): The arguments.
         lr (float, optional): The learning rate. Defaults to 2e-5.
@@ -51,24 +52,14 @@ def train(
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    if args.checkpoint:
-        model.load_state_dict(
-            torch.load(args.checkpoint, map_location=torch.device("cpu"))
-        )
-        print(f"loading model from {args.checkpoint}")
-
     model = model.to(device)
     model.train()
 
     optimizer = AdamW(model.parameters(), lr=lr)
 
-    if args.use_activitynet:
+    if args.use_memory:
         train_dataloader = DataLoader(
             dataset, batch_size=batch_size, shuffle=False, drop_last=False
-        )
-    elif args.use_activitynet_last_frame:
-        train_dataloader = DataLoader(
-            dataset, batch_size=batch_size, shuffle=True, drop_last=True
         )
     else:
         train_dataloader = DataLoader(
@@ -95,7 +86,7 @@ def train(
                 prefix.to(device, dtype=torch.float32),
             )
 
-            if args.use_activitynet:
+            if args.use_memory:
                 # Compute the batch indices of those frames
                 # that are the last in a sequence.
                 contains_caption = (mask == 1).any(dim=1)
@@ -153,12 +144,95 @@ def train(
     return model
 
 
+def evaluate(
+    dataset : ClipCocoDataset | ActivityNetDataset
+            | ActivityNetLastFrameDataset,
+    model: ClipCaptionModel,
+    args: argparse.Namespace,
+    output_dir: str = ".",
+) -> ClipCaptionModel:
+    """Evaluate the model.
+
+    Args:
+        dataset (ClipCocoDataset | ActivityNetDataset
+            | ActivityNetLastFrameDataset): The dataset to use.
+        model (ClipCaptionModel): The model to evaluate.
+        args (argparse.Namespace): The arguments.
+        output_dir (str, optional): The output directory. Defaults to ".".
+    """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #device = torch.device("mps")
+    batch_size = args.bs
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    model = model.to(device)
+    model.eval()
+
+    tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+
+    eval_dataloader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=False, drop_last=False
+    )
+
+    ground_truths, generated_captions = [], []
+    progress = tqdm(total=len(eval_dataloader))
+    for i, (tokens, mask, prefix) in enumerate(eval_dataloader):
+        tokens, mask, prefix = (
+            tokens.to(device),
+            mask.to(device),
+            prefix.to(device, dtype=torch.float32),
+        )
+
+        if args.use_memory:
+            contains_caption = (mask == 1).any(dim=1)
+            idx = contains_caption.nonzero(as_tuple=True)[0].tolist()
+
+            prefix_projections = model.clip_project(prefix, idx).view(
+                -1, 1, model.prefix_length, model.gpt_embedding_size
+            )
+
+            if len(idx) == 0:
+                progress.update()
+                continue
+
+            tokens, mask, prefix, prefix_projections =  \
+                tokens[idx], mask[idx], prefix[idx], prefix_projections[idx]
+        else:
+            prefix_projections = model.clip_project(prefix).view(
+                -1, 1, model.prefix_length, model.gpt_embedding_size
+            )
+
+        ground_truths += [tokenizer.decode(gt) for gt in tokens]
+        generated_captions += [
+            generate_beam(model, tokenizer, embed=prefix_embed)[0]
+            for prefix_embed in prefix_projections
+        ]
+
+        progress.update()
+
+    ground_truths = dict(enumerate(ground_truths))
+    memory_str = "memory" if args.use_memory else "no_memory"
+    filename = f"{output_dir}/{memory_str}_references.json"
+
+    with open(filename, 'w') as fp:
+        json.dump(ground_truths, fp)
+
+    generated_captions = dict(enumerate(generated_captions))
+    filename = f"{output_dir}/{memory_str}_captions.json"
+
+    with open(filename, 'w') as fp:
+        json.dump(generated_captions, fp)
+
+
 def main(args) -> None:
     """Main training routine."""
-    if args.use_activitynet:
-        dataset = ActivityNetDataset(args.data, args.bs, args.prefix_length)
-    elif args.use_activitynet_last_frame:
-        dataset = ActivityNetLastFrameDataset(args.data, args.prefix_length)
+    if args.use_video_dataset:
+        if args.use_memory:
+            dataset = ActivityNetDataset(args.data, args.bs, args.prefix_length)
+        else:
+            dataset = ActivityNetLastFrameDataset(args.data, args.prefix_length)
     else:
         dataset = ClipCocoDataset(
             args.data, args.prefix_length, normalize_prefix=args.normalize_prefix
@@ -237,10 +311,10 @@ if __name__ == "__main__":
 
     # Dataset configuration
     parser.add_argument(
-        "--use_activitynet", dest="use_activitynet", action="store_true"
+        "--use_video_dataset", dest="use_video_dataset", action="store_true"
     )
     parser.add_argument(
-        "--use_activitynet_last_frame", dest="use_activitynet_last_frame", action="store_true"
+        "--use_memory", dest="use_memory", action="store_true"
     )
 
     args = parser.parse_args()
