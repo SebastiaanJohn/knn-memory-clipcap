@@ -14,7 +14,7 @@ class ActivityNetLastFrameDataset(Dataset):
     """Dataset for loading the last frame of ActivityNet video clips."""
 
     def __init__(
-        self, prepr_dataset_path: str, batch_size: int, prefix_length: int
+        self, prepr_dataset_path: str, prefix_length: int
     ) -> None:
         """Initialize an ActivityNetDataset object.
 
@@ -22,11 +22,8 @@ class ActivityNetLastFrameDataset(Dataset):
             prepr_dataset_path (str): Path to the pre-processed ActivityNet
                 pickle file. The pickle file should contain a HuggingFace
                 `datasets.Dataset` object.
-            batch_size (int): The batch size. Must be the same as the batch
-                size used for the DataLoader.
             prefix_length (int): The length of the caption's prefix.
         """
-        self.batch_size = batch_size
         self.prefix_length = prefix_length
 
         # Load pre-processed dataset.

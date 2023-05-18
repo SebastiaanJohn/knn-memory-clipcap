@@ -7,6 +7,7 @@ import sys
 
 import torch
 from dataset.activitynet import ActivityNetDataset
+from dataset.activitynet_last_frame import ActivityNetLastFrameDataset
 from dataset.coco import ClipCocoDataset
 from models.clipcap import ClipCaptionModel, ClipCaptionPrefix
 from torch.nn import functional as nnf
@@ -90,7 +91,7 @@ def train(
                 prefix.to(device, dtype=torch.float32),
             )
 
-            if args.use_memory:
+            if args.use_activitynet:
                 # Compute the batch indices of those frames
                 # that are the last in a sequence.
                 contains_caption = (mask == 1).any(dim=1)
@@ -150,8 +151,10 @@ def train(
 
 def main(args) -> None:
     """Main training routine."""
-    if args.use_video_dataset:
+    if args.use_activitynet:
         dataset = ActivityNetDataset(args.data, args.bs, args.prefix_length)
+    elif args.use_activitynet_last_frame:
+        dataset = ActivityNetLastFrameDataset(args.data, args.prefix_length)
     else:
         dataset = ClipCocoDataset(
             args.data, args.prefix_length, normalize_prefix=args.normalize_prefix
@@ -201,7 +204,6 @@ if __name__ == "__main__":
     parser.add_argument("--num_layers", type=int, default=8)
     parser.add_argument("--num_heads", type=int, default=8)
     parser.add_argument("--memorizing_layers", type=tuple, default=(4,5))
-    parser.add_argument("--use_memory", action="store_true")
 
     # Data and checkpoints
     parser.add_argument("--checkpoint", default=None, help="checkpoint to load")
@@ -231,7 +233,10 @@ if __name__ == "__main__":
 
     # Dataset configuration
     parser.add_argument(
-        "--use_video_dataset", dest="use_video_dataset", action="store_true"
+        "--use_activitynet", dest="use_activitynet", action="store_true"
+    )
+    parser.add_argument(
+        "--use_activitynet_last_frame", dest="use_activitynet_last_frame", action="store_true"
     )
 
     args = parser.parse_args()
