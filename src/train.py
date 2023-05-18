@@ -5,12 +5,11 @@ import json
 import os
 import pickle
 import sys
+
 import torch
 import torch.nn as nn
-
 from dataset.activitynet import ActivityNetDataset
 from memorizing_transformers_pytorch import MemorizingTransformer
-
 from torch.nn import functional as nnf
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
@@ -182,6 +181,8 @@ class MemoryTransformer(nn.Module):
             batch_indices (list | None): The batch indices for which the
                 memories must be cleared at the end of this forward pass.
                 If None, all memories will be cleared.
+
+
         Returns:
             torch.Tensor: The output tensor.
         """
@@ -390,45 +391,6 @@ def save_config(args: argparse.Namespace) -> None:
         json.dump(config, outfile)
 
 
-def load_model(
-    config_path: str, epoch_or_latest: str | int = "_latest"
-) -> tuple[ClipCaptionModel, argparse.ArgumentParser]:
-    """Load the model from a config file.
-
-    Args:
-        config_path (str): The path to the config file.
-        epoch_or_latest (str | int, optional): The epoch to load. Defaults to
-            "_latest".
-
-    Returns:
-        tuple[ClipCaptionModel, argparse.ArgumentParser]: The model and the
-            parser.
-    """
-    with open(config_path) as f:
-        config = json.load(f)
-    parser = argparse.ArgumentParser()
-    parser.set_defaults(**config)
-    args = parser.parse_args()
-    if type(epoch_or_latest) is int:
-        epoch_or_latest = f"-{epoch_or_latest:03d}"
-    model_path = os.path.join(
-        args.out_dir, f"{args.prefix}{epoch_or_latest}.pt"
-    )
-    if args.only_prefix:
-        model = ClipCaptionPrefix(args.prefix_length)
-    else:
-        model = ClipCaptionModel(args.prefix_length)
-    if os.path.isfile(model_path):
-        print(f"loading model from {model_path}")
-        model.load_state_dict(
-            torch.load(model_path, map_location=torch.device("cpu"))
-        )
-    else:
-        print(f"{model_path} is not exist")
-
-    return model, parser
-
-
 def train(
     dataset : ClipCocoDataset | ActivityNetDataset,
     model: ClipCaptionModel,
@@ -452,12 +414,19 @@ def train(
     Returns:
         model: The trained model.
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("mps")
     batch_size = args.bs
     epochs = args.epochs
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
+    if args.checkpoint:
+        model.load_state_dict(
+            torch.load(args.checkpoint, map_location=torch.device("cpu"))
+        )
+        print(f"loading model from {args.checkpoint}")
 
     model = model.to(device)
     model.train()
@@ -555,7 +524,8 @@ def main() -> None:
     """Main training routine."""
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--data", default="./data/coco/oscar_split_train.pkl")
+    parser.add_argument("--checkpoint", default=None, help="checkpoint to load")
+    parser.add_argument("--data", default="src/data/activitynet_ViT-B_32_train_300.pkl")
     parser.add_argument("--out_dir", default="./checkpoints")
     parser.add_argument(
         "--prefix", default="coco_prefix", help="prefix for saved filenames"
