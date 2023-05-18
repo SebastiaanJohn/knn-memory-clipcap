@@ -9,7 +9,7 @@ import sys
 import torch
 from dataset.activitynet import ActivityNetDataset
 from dataset.coco import ClipCocoDataset
-from models.clipcap import ClipCaptionModel
+from models.clipcap import ClipCaptionModel, ClipCaptionPrefix
 from torch.nn import functional as nnf
 from torch.utils.data import DataLoader
 from tqdm import tqdm
