@@ -2,10 +2,11 @@
 
 import torch
 import torch.nn as nn
-from memory_transformer import TransformerMapper
 from transformers import (
     GPT2LMHeadModel,
 )
+
+from .memory_transformer import TransformerMapper
 
 
 class ClipCaptionModel(nn.Module):
