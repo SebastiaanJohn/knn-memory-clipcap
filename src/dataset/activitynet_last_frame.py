@@ -11,122 +11,6 @@ from tqdm import tqdm
 
 
 class ActivityNetLastFrameDataset(Dataset):
-    """Dataset for COCO captions and CLIP embeddings."""
-
-    def __init__(
-        self,
-        data_path: str,
-        prefix_length: int,
-        gpt2_type: str = "gpt2",
-        normalize_prefix: bool = False,
-    ) -> None:
-        """Initialize dataset.
-
-        Args:
-            data_path (str): The path to the data file.
-            prefix_length (int): The length of the prefix to be used.
-            gpt2_type (str, optional): The type of GPT2 model to use. Defaults
-                to "gpt2".
-            normalize_prefix (bool, optional): Whether to normalize the
-                prefix. Defaults to False.
-        """
-        self.tokenizer = GPT2Tokenizer.from_pretrained(gpt2_type)
-        self.prefix_length = prefix_length
-        self.normalize_prefix = normalize_prefix
-
-        with open(data_path, "rb") as f:
-            all_data = pickle.load(f)
-
-        print("Data size is %0d" % len(all_data["clip_embedding"]))
-        sys.stdout.flush()
-
-        self.prefixes = all_data["clip_embedding"]
-        captions_raw = all_data["captions"]
-        self.image_ids = [caption["image_id"] for caption in captions_raw]
-        self.captions = [caption["caption"] for caption in captions_raw]
-
-        if os.path.isfile(f"{data_path[:-4]}_tokens.pkl"):
-            with open(f"{data_path[:-4]}_tokens.pkl", "rb") as f:
-                (
-                    self.captions_tokens,
-                    self.caption2embedding,
-                    self.max_seq_len,
-                ) = pickle.load(f)
-        else:
-            self.captions_tokens = []
-            self.caption2embedding = []
-            max_seq_len = 0
-            for caption in captions_raw:
-                self.captions_tokens.append(
-                    torch.tensor(
-                        self.tokenizer.encode(caption["caption"]),
-                        dtype=torch.int64,
-                    )
-                )
-                self.caption2embedding.append(caption["clip_embedding"])
-                max_seq_len = max(
-                    max_seq_len, self.captions_tokens[-1].shape[0]
-                )
-            # self.max_seq_len = max_seq_len
-            with open(f"{data_path[:-4]}_tokens.pkl", "wb") as f:
-                pickle.dump(
-                    [
-                        self.captions_tokens,
-                        self.caption2embedding,
-                        max_seq_len,
-                    ],
-                    f,
-                )
-        all_len = torch.tensor(
-            [len(self.captions_tokens[i]) for i in range(len(self))]
-        ).float()
-        self.max_seq_len = min(
-            int(all_len.mean() + all_len.std() * 10), int(all_len.max())
-        )
-
-    def pad_tokens(self, item: int) -> tuple[torch.Tensor, torch.Tensor]:
-        """Pad tokens to max_seq_len and create mask.
-
-        Args:
-            item (int): Index of the item.
-
-        Returns:
-            tuple[torch.Tensor, torch.Tensor]: Tokens and mask respectively.
-        """
-        tokens = self.captions_tokens[item]
-        padding = self.max_seq_len - tokens.shape[0]
-        if padding > 0:
-            tokens = torch.cat(
-                (tokens, torch.zeros(padding, dtype=torch.int64) - 1)
-            )
-            self.captions_tokens[item] = tokens
-        elif padding < 0:
-            tokens = tokens[: self.max_seq_len]
-            self.captions_tokens[item] = tokens
-        mask = tokens.ge(0)  # mask is zero where we out of sequence
-        tokens[~mask] = 0
-        mask = mask.float()
-        mask = torch.cat(
-            (torch.ones(self.prefix_length), mask), dim=0
-        )  # adding prefix mask
-
-        return tokens, mask
-
-    def __len__(self) -> int:
-        """Return the length of the dataset."""
-        return len(self.captions_tokens)
-
-    def __getitem__(self, item: int) -> tuple[torch.Tensor, ...]:
-        """Get item from the dataset."""
-        tokens, mask = self.pad_tokens(item)
-        prefix = self.prefixes[self.caption2embedding[item]]
-        if self.normalize_prefix:
-            prefix = prefix.float()
-            prefix = prefix / prefix.norm(2, -1)
-
-        return tokens, mask, prefix
-
-class ActivityNetLastFrameDataset(Dataset):
     """Dataset for loading the last frame of ActivityNet video clips."""
 
     def __init__(
@@ -149,14 +33,52 @@ class ActivityNetLastFrameDataset(Dataset):
         logging.info("Loading pre-processed dataset...")
         with open(prepr_dataset_path, "rb") as f:
             self.prepr_dataset = pickle.load(f)
-
-        print(self.prepr_dataset[0])
-
         self.pad_token_id = 198
-        self.frame_embed_dim = self.prepr_dataset.features["frames"].shape[1]
         logging.info(
             f"Dataset contains {self.prepr_dataset.num_rows} video clips."
         )
+
+        # We only need the last frame of each video clip.
+        self.prepr_dataset = self.prepr_dataset.map(
+            lambda x: {
+                "frames": x["frames"][-1],
+                "caption": x["caption"],
+                "video_id": x["video_id"],
+            },
+            num_proc=1,
+        )
+
+        # Get the maximum sequence length.
+        self.max_seq_len = max(len(data["caption"]) for data in self.prepr_dataset)
+
+        logging.info(f"Max sequence length: {self.max_seq_len}")
+
+    def pad_tokens(self, item: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Pad tokens to max_seq_len and create mask.
+
+        Args:
+            item (int): Index of the item.
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]: Tokens and mask respectively.
+        """
+        tokens = self.prepr_dataset[item]['caption']
+        padding = self.max_seq_len - len(tokens)
+        if padding > 0:
+            tokens = torch.cat((tokens, torch.full((padding,), self.pad_token_id, dtype=torch.long)), dim=0)
+        elif padding < 0:
+            tokens = tokens[: self.max_seq_len]
+
+        # Create a mask of ones for non-padding tokens and zeros for padding tokens
+        mask = [1 if token != self.pad_token_id else 0 for token in tokens]
+
+        # Convert mask to PyTorch tensors
+        mask = torch.tensor(mask, dtype=torch.float)
+
+        # Add prefix mask
+        mask = torch.cat((torch.ones(self.prefix_length), mask), dim=0)
+
+        return tokens, mask
 
 
     def __len__(self) -> int:
@@ -167,23 +89,12 @@ class ActivityNetLastFrameDataset(Dataset):
         """
         return len(self.prepr_dataset)
 
-    def __getitem__(
-        self, item: int
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Get the last frame of a video clip and its corresponding caption.
+    def __getitem__(self, item: int) -> tuple[torch.Tensor, ...]:
+        """Get item from the dataset."""
+        tokens, mask = self.pad_tokens(item)
+        prefix = self.prepr_dataset[item]['frames']
 
-        Args:
-            item (int): The index of the item to retrieve.
-
-        Returns:
-            tuple[torch.Tensor, torch.Tensor, torch.Tensor]: A tuple
-                containing the caption, the caption mask, and the frame.
-        """
-        return (
-            self.prepr_dataset[item]["caption"][:self.prefix_length],
-            self.prepr_dataset[item]["caption_mask"][:self.prefix_length],
-            self.prepr_dataset[item]["frames"][-1],
-        )
+        return tokens, mask, prefix
 
 def main(args: argparse.Namespace) -> None:
     """Test whether data loading using a DataLoader works correctly.
