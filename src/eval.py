@@ -79,13 +79,14 @@ def evaluate(
                 progress.update()
                 continue
 
-            tokens, mask, prefix, prefix_projections =  \
-                tokens[idx], mask[idx], prefix[idx], prefix_projections[idx]
+            tokens, mask, prefix_projections =  \
+                tokens[idx], mask[idx], prefix_projections[idx]
         else:
             prefix_projections = model.clip_project(prefix).view(
                 -1, 1, model.prefix_length, model.gpt_embedding_size
             )
 
+        tokens = [t[m.bool()] for t, m in zip(tokens, mask)]
         ground_truths += [tokenizer.decode(gt) for gt in tokens]
         generated_captions += [
             generate_beam(model, tokenizer, embed=prefix_embed)[0]
