@@ -86,6 +86,7 @@ def evaluate(
                 -1, 1, model.prefix_length, model.gpt_embedding_size
             )
 
+        mask = mask[:, args.prefix_length:]
         tokens = [t[m.bool()] for t, m in zip(tokens, mask)]
         ground_truths += [tokenizer.decode(gt) for gt in tokens]
         generated_captions += [
