@@ -1,5 +1,5 @@
 <!-- omit from toc -->
-# Enhancing Long-Range Dependency Management: A Comprehensive Study on the Integration of Memorizing Transformers in ClipCap
+# ClipMemCap: Enhancing ClipCap with long-range dependency handling for video captioning
 > Authors: Sebastiaan Dijkstra, Erik Buis, Jan Bakker, Jelke Matthijsse, Dennis Agafonov \
 > Date: 29-5-2023 \
 > Deep Learning 2 \
@@ -11,21 +11,25 @@
   - [Additional Results](#additional-results)
   - [Ablation Studies](#ablation-studies)
   - [Related Work](#related-work)
-- [Exploring ClipCap's Capabilities: Potential and Challenges](#exploring-clipcaps-capabilities-potential-and-challenges)
+- [Exploring ClipCap's Capabilities](#exploring-clipcaps-capabilities)
   - [Strengths](#strengths)
   - [Weaknesses](#weaknesses)
-- [Our contribution: Utilizing Memorizing Transformers for Improved Long-Range Dependency Handling](#our-contribution-utilizing-memorizing-transformers-for-improved-long-range-dependency-handling)
+- [Our contribution](#our-contribution)
 - [Datasets](#datasets)
   - [Pre-processing](#pre-processing)
 - [Results](#results)
-- [Conclusion](#conclusion)
+- [Conclusion \& Discussion](#conclusion--discussion)
 - [Contributions](#contributions)
 - [References](#references)
 
 
 # Introduction
 <!-- Introduction: An analysis of the paper and its key components. Think about it as a nicely formatted review as you would see on OpenReview.net. It should contain one paragraph of related work as well. -->
-__Image captioning__ is a multimodal task that involves generating textual descriptions of images. This research investigates a method called ClipCap[^mokady2021clipcap], which was explicitly proposed for this task, and explores the potential of enhancing this method by integrating long-range dependency handling into the model.
+Image captioning is a multimodal task that involves generating textual descriptions of images. In our research project, we investigated a method called ClipCap[^mokady2021clipcap], which was explicitly designed for this task. One of the main advantages of ClipCap is that it is made of several building blocks that can easily be swapped out, meaning that it can be adapted to different datasets and tasks.
+
+The key idea behind our research is that the original ClipCap architecture will not be good at captioning videos, since it does not remember information from previously seen input frames. We propose that by integrating a Memorizing Transformer[^wu2022memorizing] into the model, it will be able to remember information from previous frames and thus be able to generate better captions for videos.
+
+We will first provide a brief overview of the ClipCap method and its capabilities. Then, we will discuss the strengths and weaknesses of the method, which will motivate our proposed enhancement. Following this, we will present how we implemented this enhancement and why we made certain design decisions. Finally, we will present our results and conclude with a discussion of our findings.
 
 ## ClipCap Summary
 ![ClipCap Architecture](images/clipcap.png)
@@ -41,7 +45,7 @@ The authors experiment with two different training procedures for the ClipCap mo
 Both approaches were evaluated on the Conceptual Captions,[^sharma2018conceptual], NoCaps, and[^agrewal2019nocaps] COCO[^lin2014coco] datasets, achieving state-of-the-art performance while requiring significantly less training time and data than previous methods. Additionally, the ClipCap architecture is more straightforward and faster than earlier methods.
 
 ## Additional Results
-Multiple other experiments were conducted to determine when ClipCap performs well and when not. For example, the authors found that fine-tuning the LM results in a much more expressive model but that this model is more susceptible to overfitting. Additionally, an interpretability study was conducted to further understand the model's inner workings, in which the prefix embeddings are interpreted as a sequence of tokens. It was found that the interpretation is meaningful when both the mapping network and the LM are trained but that it becomes essentially unreadable when only the mapping network is trained. The authors hypothesize that this happens because the network is also charged with maneuvering the fixed LM.
+Multiple other experiments were conducted to determine when ClipCap performs well and when it does not. For example, the authors found that fine-tuning the LM results in a much more expressive model but that this model is more susceptible to overfitting. Additionally, an interpretability study was conducted to further understand the model's inner workings, in which the prefix embeddings are interpreted as a sequence of tokens. It was found that the interpretation is meaningful when both the mapping network and the LM are trained but that it becomes essentially unreadable when only the mapping network is trained. The authors hypothesize that this happens because the network is also charged with maneuvering the fixed LM.
 
 ## Ablation Studies
 The authors conducted multiple ablation studies to verify and motivate ClipCap's design choices. They found that the mapping network is crucial for the model to perform well and that a Transformer architecture is superior when the LM is frozen, while an MLP is more effective when the LM is additionally fine-tuned. Furthermore, the prefix length was a crucial hyperparameter; a prefix that is too short results in a lack of expressiveness, while a prefix that is too long results in a very large model that will be slow to train.
@@ -50,7 +54,7 @@ The authors conducted multiple ablation studies to verify and motivate ClipCap's
 Previous research has delved into both image-based and video-based recognition tasks. Progress in Long Short-Term Memory networks (LSTMs)[^gao2017video], spatio-temporal feature learning for 3D convolutional networks[^tran2015learning], and long-term recurrent convolutional networks[^donahue2015long] have produced models capable of generating captions for both images and videos. However, these models demand significant computational resources and extensive data. Alternative methods leverage vision and language pre-training with the BERT architecture[^li2020oscar] [^devlin2018bert] [^zhang2021vinvl] [^zhou2020unified] [^wang2021simvlm]. Nonetheless, these methods are either limited to specific datasets[^li2020oscar] [^zhang2021vinvl] [^zhou2020unified], which leads to compromised generalizability, or they involve a pre-training process that is computationally intensive[^wang2021simvlm]. Hence, the authors advocate for the ClipCap model primarily for its efficiency and relative simplicity.
 
 
-# Exploring ClipCap's Capabilities: Potential and Challenges
+# Exploring ClipCap's Capabilities
 <!-- Exposition of its weaknesses/strengths/potential which triggered your group to come up with a response. -->
 
 ## Strengths
@@ -64,7 +68,7 @@ Other than a dataset of image-text pairs, the model does not require any additio
 Apart from images, other visual data such as video segments naturally have long-range dependencies between individual frames. When interpreted seperately, each frame may not contain enough information to generate a meaningful caption for the whole video. However, when interpreted jointly, emergent patterns may be observed that can be used to generate a more accurate caption. The ClipCap model does not account for these long-range dependencies as the mapping network's Transformer only has a limited context window, and therefore may not be able to generate accurate captions considering entire videos.
 
 
-# Our contribution: Utilizing Memorizing Transformers for Improved Long-Range Dependency Handling
+# Our contribution
 <!-- Describe your novel contribution. -->
 Our research aims to explore potential performance enhancements in video captioning by integrating a Memorizing Transformer[^wu2022memorizing] into the mapping network of ClipCap. The original paper applies the concept of Memorizing Transformers to language models, effectively addressing the challenge of long-term dependencies. We propose that this approach can be extended to incorporate visual information in the context of video captioning, where long-range dependencies are also prevalent.
 
@@ -95,7 +99,11 @@ Videos are converted into image frames at a rate of 5 frames per second (fps). S
 <!-- Results of your work (link that part with the code in the jupyter notebook) -->
 
 
-# Conclusion
+# Conclusion & Discussion
+
+
+TODO Somewhere in the discussion, we should mention the following:
+While we only train a model to caption videos, we hypothesize that our enhancement would also be able to generalize to other modalities such as audio files, because we integrate a general form of long-range dependency handling that is not specific to videos.
 
 
 # Contributions
