@@ -88,57 +88,57 @@ def parse_activitynet(
             logging.warning(f"Video {video_id} does not exist")
             continue
 
-        for start, end, caption in zip(
-            entry["captions_starts"],
-            entry["captions_ends"],
-            entry["en_captions"],
-        ):
-            # Get the start and end frame numbers.
-            start_frame = int(start * 5) + 1
-            end_frame = int(end * 5) + 1
+        # Get the first video clip.
+        start = entry["captions_starts"][0]
+        end = entry["captions_ends"][0]
+        caption = entry["en_captions"][0]
 
-            while not (
-                Path(video_frames_dir) / f"{end_frame:06d}.jpg"
-            ).exists():
-                end_frame -= 1
+        # Get the start and end frame numbers.
+        start_frame = int(start * 5) + 1
+        end_frame = int(end * 5) + 1
 
-            # Compute the frame embeddings.
-            embeddings = []
-            for frame_number in range(start_frame, end_frame + 1, batch_size):
-                # Load the next batch of frames.
-                images = [
-                    preprocess(
-                        Image.fromarray(
-                            io.imread(
-                                Path(video_frames_dir)
-                                / f"{frame_number + i:06d}.jpg"
-                            )
+        while not (
+            Path(video_frames_dir) / f"{end_frame:06d}.jpg"
+        ).exists():
+            end_frame -= 1
+
+        # Compute the frame embeddings.
+        embeddings = []
+        for frame_number in range(start_frame, end_frame + 1, batch_size):
+            # Load the next batch of frames.
+            images = [
+                preprocess(
+                    Image.fromarray(
+                        io.imread(
+                            Path(video_frames_dir)
+                            / f"{frame_number + i:06d}.jpg"
                         )
                     )
-                    .unsqueeze(0)
-                    .to(device)
-                    for i in range(
-                        min(batch_size, end_frame - frame_number + 1)
-                    )
-                ]
+                )
+                .unsqueeze(0)
+                .to(device)
+                for i in range(
+                    min(batch_size, end_frame - frame_number + 1)
+                )
+            ]
 
-                # Compute the frame embeddings for the batch.
-                with torch.no_grad():
-                    embedding = clip_model.encode_image(
-                        torch.cat(images, dim=0)
-                    ).cpu()
-                    embeddings.append(embedding)
+            # Compute the frame embeddings for the batch.
+            with torch.no_grad():
+                embedding = clip_model.encode_image(
+                    torch.cat(images, dim=0)
+                ).cpu()
+                embeddings.append(embedding)
 
-            # Add the video clip to the new dataset.
-            prepr_dataset.append(
-                {
-                    "video_id": video_id,
-                    "frames": torch.cat(embeddings, dim=0),
-                    "caption": tokenizer.encode(
-                        caption, return_tensors="pt"
-                    ).squeeze(0),
-                }
-            )
+        # Add the video clip to the new dataset.
+        prepr_dataset.append(
+            {
+                "video_id": video_id,
+                "frames": torch.cat(embeddings, dim=0),
+                "caption": tokenizer.encode(
+                    caption, return_tensors="pt"
+                ).squeeze(0),
+            }
+        )
 
     # Construct a new HuggingFace dataset from the list of video clips.
     prepr_dataset = Dataset.from_list(
