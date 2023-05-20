@@ -38,7 +38,7 @@ class ActivityNetLastFrameDataset(Dataset):
         # We only need the last frame of each video clip.
         self.prepr_dataset = self.prepr_dataset.map(
             lambda x: {
-                "frames": x["frames"][0].unsqueeze(0),
+                "frames": x["frames"][-1].unsqueeze(0),
                 "caption": x["caption"],
                 "video_id": x["video_id"],
             },

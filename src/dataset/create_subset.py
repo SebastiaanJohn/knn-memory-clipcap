@@ -1,4 +1,8 @@
-"""Create a subset of the dataset."""
+"""Create a subset of the dataset.
+
+For example, to create a subset of 300 videos from the train split, run:
+python src/dataset/create_subset.py --split train --subset 300 --source_dir src/data/train/
+"""
 
 import argparse
 import logging
@@ -63,6 +67,7 @@ if __name__ == "__main__":
         "--split",
         type=str,
         default="train",
+        choices=("train", "validation", "test"),
         help="The split of the dataset to create a subset of.",
     )
     parser.add_argument(

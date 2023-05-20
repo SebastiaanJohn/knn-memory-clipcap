@@ -216,13 +216,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--subset",
         type=int,
-        default=300,
+        default=2000,
         help="Number of videos to use from the split.",
     )
     parser.add_argument(
         "--frames_dir",
         type=str,
-        default="src/data/train_subset_300/",
+        default="src/data/train_subset_2000",
         help="Path to the directory containing the video frames.",
     )
     parser.add_argument(
