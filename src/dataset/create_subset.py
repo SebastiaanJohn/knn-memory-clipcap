@@ -5,12 +5,12 @@ import logging
 import shutil
 from pathlib import Path
 
-import dataset
+from datasets import IterableDataset, load_dataset
 from tqdm import tqdm
 
 
 def create_subset(
-    dataset: dataset.IterableDataset, source_dir: str, args: argparse.Namespace
+    dataset: IterableDataset, source_dir: str, args: argparse.Namespace
 ) -> None:
     """Split frames directory into train, test, and val directories.
 
@@ -43,7 +43,7 @@ def create_subset(
 def main(args: argparse.Namespace) -> None:
     """Main function."""
     logging.info(f"Extracting {args.subset_size} videos from {args.split} split.")
-    dataset = dataset.load_dataset(
+    dataset = load_dataset(
         "Leyo/ActivityNet_Captions",
         split=f"{args.split}[0:{args.subset_size}]",
     )
