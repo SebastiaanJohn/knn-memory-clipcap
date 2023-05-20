@@ -10,7 +10,7 @@ import torch
 from dataset.activitynet import ActivityNetDataset
 from dataset.activitynet_last_frame import ActivityNetLastFrameDataset
 from dataset.coco import ClipCocoDataset
-from inference.inference import generate_beam
+from evaluation.inference.inference import generate_beam
 from models.clipcap import ClipCaptionModel, ClipCaptionPrefix
 from torch.utils.data import DataLoader
 from tqdm import tqdm
