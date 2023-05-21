@@ -30,7 +30,6 @@ class MemoryTransformer(nn.Module):
             num_retrieved_memories (int): The number of memories to retrieve.
         """
         super(MemoryTransformer, self).__init__()
-        self.bs = batch_size
         self.model = MemorizingTransformer(
             dim = dim_self,
             dim_head = dim_self // num_heads,
@@ -39,6 +38,7 @@ class MemoryTransformer(nn.Module):
             max_knn_memories = max_knn_memories,
             num_retrieved_memories = num_retrieved_memories,
         )
+        self.knn_memories = self.model.create_knn_memories(batch_size = batch_size)
 
     def forward(self, x: torch.Tensor, batch_indices: list | None) -> torch.Tensor:
         """The forward pass.
@@ -52,10 +52,9 @@ class MemoryTransformer(nn.Module):
         Returns:
             torch.Tensor: The output tensor.
         """
-        with self.model.knn_memories_context(batch_size = self.bs) as knn_memories:
-            x = self.model(x, knn_memories)
-            knn_memories.clear_memory(batch_indices)
-            return x
+        x = self.model(x, self.knn_memories)
+        self.knn_memories.clear_memory(batch_indices)
+        return x
 
 class TransformerMapper(nn.Module):
     """A transformer mapper module."""
