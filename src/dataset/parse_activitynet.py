@@ -41,6 +41,7 @@ def parse_activitynet(
     clip_model_type: str = "ViT-B/32",
     gpt2_type: str = "gpt2",
     batch_size: int = 32,
+    use_all_video_clips: bool = False,
 ) -> Dataset:
     """Pre-process the ActivityNet Captions dataset.
 
@@ -59,6 +60,9 @@ def parse_activitynet(
             Defaults to "gpt2".
         batch_size (int, optional): The batch size to use when computing frame
             embeddings. Defaults to 32.
+        use_all_video_clips (bool, optional): Whether to use all video clips
+            from the dataset. If False, only the first video clip from each
+            video is used. Defaults to False.
 
     Returns:
         Dataset: Dataset of video clip frame embeddings with their captions.
@@ -88,57 +92,62 @@ def parse_activitynet(
             logging.warning(f"Video {video_id} does not exist")
             continue
 
-        # Get the first video clip.
-        start = entry["captions_starts"][0]
-        end = entry["captions_ends"][0]
-        caption = entry["en_captions"][0]
+        for start, end, caption in zip(
+            entry["captions_starts"],
+            entry["captions_ends"],
+            entry["en_captions"],
+        ):
+            # Get the start and end frame numbers.
+            start_frame = int(start * 5) + 1
+            end_frame = int(end * 5) + 1
 
-        # Get the start and end frame numbers.
-        start_frame = int(start * 5) + 1
-        end_frame = int(end * 5) + 1
+            while not (
+                Path(video_frames_dir) / f"{end_frame:06d}.jpg"
+            ).exists():
+                end_frame -= 1
 
-        while not (
-            Path(video_frames_dir) / f"{end_frame:06d}.jpg"
-        ).exists():
-            end_frame -= 1
-
-        # Compute the frame embeddings.
-        embeddings = []
-        for frame_number in range(start_frame, end_frame + 1, batch_size):
-            # Load the next batch of frames.
-            images = [
-                preprocess(
-                    Image.fromarray(
-                        io.imread(
-                            Path(video_frames_dir)
-                            / f"{frame_number + i:06d}.jpg"
+            # Compute the frame embeddings.
+            embeddings = []
+            for frame_number in range(start_frame, end_frame + 1, batch_size):
+                # Load the next batch of frames.
+                images = [
+                    preprocess(
+                        Image.fromarray(
+                            io.imread(
+                                Path(video_frames_dir)
+                                / f"{frame_number + i:06d}.jpg"
+                            )
                         )
                     )
-                )
-                .unsqueeze(0)
-                .to(device)
-                for i in range(
-                    min(batch_size, end_frame - frame_number + 1)
-                )
-            ]
+                    .unsqueeze(0)
+                    .to(device)
+                    for i in range(
+                        min(batch_size, end_frame - frame_number + 1)
+                    )
+                ]
 
-            # Compute the frame embeddings for the batch.
-            with torch.no_grad():
-                embedding = clip_model.encode_image(
-                    torch.cat(images, dim=0)
-                ).cpu()
-                embeddings.append(embedding)
+                # Compute the frame embeddings for the batch.
+                with torch.no_grad():
+                    embedding = clip_model.encode_image(
+                        torch.cat(images, dim=0)
+                    ).cpu()
+                    embeddings.append(embedding)
 
-        # Add the video clip to the new dataset.
-        prepr_dataset.append(
-            {
-                "video_id": video_id,
-                "frames": torch.cat(embeddings, dim=0),
-                "caption": tokenizer.encode(
-                    caption, return_tensors="pt"
-                ).squeeze(0),
-            }
-        )
+            # Add the video clip to the new dataset.
+            prepr_dataset.append(
+                {
+                    "video_id": video_id,
+                    "frames": torch.cat(embeddings, dim=0),
+                    "caption": tokenizer.encode(
+                        caption, return_tensors="pt"
+                    ).squeeze(0),
+                }
+            )
+
+            # If we only want to use the first video clip from each video,
+            # break out of the loop.
+            if not use_all_video_clips:
+                break
 
     # Construct a new HuggingFace dataset from the list of video clips.
     prepr_dataset = Dataset.from_list(
@@ -243,6 +252,11 @@ if __name__ == "__main__":
         type=int,
         default=32,
         help="The batch size to use for computing CLIP embeddings.",
+    )
+    parser.add_argument(
+        "--use_all_video_clips",
+        action="store_true",
+        help="Whether to use all video clips from each video.",
     )
 
     # Parse the arguments.
