@@ -187,6 +187,7 @@ def main(args: argparse.Namespace):
         args.clip_model_type,
         args.gpt2_type,
         args.batch_size,
+        args.use_all_video_clips,
     )
 
     # Save pre-processed dataset in parent folder of `args.frames_dir`.
