@@ -22,19 +22,6 @@ from tqdm import tqdm
 from transformers import GPT2Tokenizer
 
 
-def get_device() -> torch.device:
-    """Get the device to use for computing CLIP embeddings.
-
-    Returns:
-        torch.device: The device to use.
-    """
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
-
-
 def parse_activitynet(
     dataset: IterableDataset,
     frames_dir: str,
@@ -42,6 +29,7 @@ def parse_activitynet(
     gpt2_type: str = "gpt2",
     batch_size: int = 32,
     use_all_video_clips: bool = False,
+    use_mps: bool = False,
 ) -> Dataset:
     """Pre-process the ActivityNet Captions dataset.
 
@@ -63,6 +51,7 @@ def parse_activitynet(
         use_all_video_clips (bool, optional): Whether to use all video clips
             from the dataset. If False, only the first video clip from each
             video is used. Defaults to False.
+        use_mps (bool, optional): Whether to use Apple GPUs. Defaults to False.
 
     Returns:
         Dataset: Dataset of video clip frame embeddings with their captions.
@@ -76,7 +65,11 @@ def parse_activitynet(
                 pad_token_id (int): The token id of a special padding token
                     that can be used to pad the captions in this dataset.
     """
-    device = get_device()
+    if use_mps:
+        device = torch.device("mps")
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     logging.info(f"Using device: {device}")
     clip_model, preprocess = clip.load(
         clip_model_type, device=device, jit=False
@@ -173,10 +166,12 @@ def main(args: argparse.Namespace):
     Args:
         args (argparse.Namespace): The command line arguments.
     """
+    logging.info(f"Arguments: {args}")
+
     # Load the dataset.
     logging.info(f"Loading {args.split} split of ActivityNet Captions...")
     dataset = load_dataset(
-        "Leyo/ActivityNet_Captions", split=f"{args.split}[0:{args.subset}]"
+        "Leyo/ActivityNet_Captions", split=f"{args.split}[1000:{args.subset}]"
     )
 
     # Pre-process the dataset.
@@ -188,15 +183,17 @@ def main(args: argparse.Namespace):
         args.gpt2_type,
         args.batch_size,
         args.use_all_video_clips,
+        args.use_mps,
     )
 
     # Save pre-processed dataset in parent folder of `args.frames_dir`.
     logging.info("Saving pre-processed dataset...")
     output_dir = Path(args.frames_dir).parent
     clip_model_type = args.clip_model_type.replace("/", "_")
+    all_video_clips = "all" if args.use_all_video_clips else "first"
     with Path.open(
         output_dir
-        / f"activitynet_{clip_model_type}_{args.split}_{args.subset}.pkl",
+        / f"activitynet_{clip_model_type}_{args.split}_{all_video_clips}_{args.subset}.pkl",
         "wb",
     ) as f:
         pickle.dump(prepr_dataset, f)
@@ -258,6 +255,11 @@ if __name__ == "__main__":
         "--use_all_video_clips",
         action="store_true",
         help="Whether to use all video clips from each video.",
+    )
+    parser.add_argument(
+        "--use_mps",
+        action="store_true",
+        help="Whether to use Apple GPU.",
     )
 
     # Parse the arguments.
