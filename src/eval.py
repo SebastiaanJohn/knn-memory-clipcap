@@ -1,6 +1,7 @@
-"""Training script for CLIPCAP model."""
+"""Evaluation script for ClipCaptioning."""
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -9,38 +10,28 @@ import torch
 from dataset.activitynet import ActivityNetDataset
 from dataset.activitynet_last_frame import ActivityNetLastFrameDataset
 from dataset.coco import ClipCocoDataset
+from evaluation.inference.inference import generate_beam
 from models.clipcap import ClipCaptionModel, ClipCaptionPrefix
-from torch.nn import functional as nnf
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import AdamW, get_linear_schedule_with_warmup
-from utils import save_config
+from transformers import GPT2Tokenizer
 
 
-def train(
-    dataset : ClipCocoDataset | ActivityNetDataset
+def evaluate(
+    dataset: ClipCocoDataset | ActivityNetDataset
             | ActivityNetLastFrameDataset,
     model: ClipCaptionModel,
     args: argparse.Namespace,
-    lr: float = 2e-5,
-    warmup_steps: int = 5000,
     output_dir: str = ".",
-    output_prefix: str = "",
 ) -> ClipCaptionModel:
-    """Train the model.
+    """Evaluate the model.
 
     Args:
         dataset (ClipCocoDataset | ActivityNetDataset
             | ActivityNetLastFrameDataset): The dataset to use.
-        model (ClipCaptionModel): The model to train.
+        model (ClipCaptionModel): The model to evaluate.
         args (argparse.Namespace): The arguments.
-        lr (float, optional): The learning rate. Defaults to 2e-5.
-        warmup_steps (int, optional): The warmup steps. Defaults to 5000.
         output_dir (str, optional): The output directory. Defaults to ".".
-        output_prefix (str, optional): The output prefix. Defaults to "".
-
-    Returns:
-        model: The trained model.
     """
     if args.use_mps:
         device = torch.device("mps")
@@ -49,105 +40,78 @@ def train(
     logging.info(f"Using device: {device}")
 
     batch_size = args.bs
-    epochs = args.epochs
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     model = model.to(device)
-    model.train()
+    model.eval()
 
-    optimizer = AdamW(model.parameters(), lr=lr)
+    tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
 
     if args.use_memory:
-        train_dataloader = DataLoader(
+        eval_dataloader = DataLoader(
             dataset, batch_size=batch_size, shuffle=False, drop_last=False
         )
     else:
-        train_dataloader = DataLoader(
+        eval_dataloader = DataLoader(
             dataset, batch_size=batch_size, shuffle=True, drop_last=True
         )
 
-    scheduler = get_linear_schedule_with_warmup(
-        optimizer,
-        num_warmup_steps=warmup_steps,
-        num_training_steps=epochs * len(train_dataloader),
-    )
+    ground_truths, generated_captions = [], []
+    progress = tqdm(total=len(eval_dataloader))
+    for i, (tokens, mask, prefix) in enumerate(eval_dataloader):
+        tokens, mask, prefix = (
+            tokens.to(device),
+            mask.to(device),
+            prefix.to(device, dtype=torch.float32),
+        )
 
-    save_config(args)
+        if args.use_memory:
+            contains_caption = (mask == 1).any(dim=1)
+            idx = contains_caption.nonzero(as_tuple=True)[0].tolist()
 
-    for epoch in range(epochs):
-        print(f">>> Training epoch {epoch}")
-        sys.stdout.flush()
-        progress = tqdm(total=len(train_dataloader), desc=output_prefix)
-        for i, (tokens, mask, prefix) in enumerate(train_dataloader):
-            model.zero_grad()
-            tokens, mask, prefix = (
-                tokens.to(device),
-                mask.to(device),
-                prefix.to(device, dtype=torch.float32),
+            prefix_projections = model.clip_project(prefix, idx).view(
+                -1, 1, model.prefix_length, model.gpt_embedding_size
             )
 
-            if args.use_memory:
-                # Compute the batch indices of those frames
-                # that are the last in a sequence.
-                contains_caption = (mask == 1).any(dim=1)
-                idx = contains_caption.nonzero(as_tuple=True)[0].tolist()
+            if len(idx) == 0:
+                progress.update()
+                continue
 
-                # Compute the forward pass of the TransformerMapper
-                # on all frames in the batch, thereby storing new memories.
-                # Use the batch indices to clear memories of videos
-                # after generating a prefix for their last frame.
-                prefix_projections = model.clip_project(prefix, idx).view(
-                    -1, model.prefix_length, model.gpt_embedding_size
-                )
-
-                # Continue the forward and backward pass of the ClipCaptionModel
-                # with only those frames which are the last in a sequence
-                # and therefore have a caption. If there are none, continue.
-
-                if len(idx) == 0:
-                    progress.update()
-                    continue
-
-                tokens, mask, prefix, prefix_projections =  \
-                    tokens[idx], mask[idx], prefix[idx], prefix_projections[idx]
-
-                embedding_text = model.gpt.transformer.wte(tokens)
-                embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
-                outputs = model.gpt(inputs_embeds=embedding_cat, attention_mask=mask)
-            else:
-                outputs = model(tokens, prefix, mask)
-
-            logits = outputs.logits[:, model.prefix_length - 1 : -1]
-            loss = nnf.cross_entropy(
-                logits.reshape(-1, logits.shape[-1]),
-                tokens.flatten(),
-                ignore_index=0,
-            )
-            loss.backward()
-            optimizer.step()
-            scheduler.step()
-            optimizer.zero_grad()
-            progress.set_postfix({"loss": loss.item()})
-            progress.update()
-            if (i + 1) % 10000 == 0:
-                torch.save(
-                    model.state_dict(),
-                    os.path.join(output_dir, f"{output_prefix}_latest.pt"),
-                )
-        progress.close()
-        if epoch % args.save_every == 0 or epoch == epochs - 1:
-            torch.save(
-                model.state_dict(),
-                os.path.join(output_dir, f"{output_prefix}-{epoch:03d}.pt"),
+            tokens, mask, prefix_projections =  \
+                tokens[idx], mask[idx], prefix_projections[idx]
+        else:
+            prefix_projections = model.clip_project(prefix).view(
+                -1, 1, model.prefix_length, model.gpt_embedding_size
             )
 
-    return model
+        mask = mask[:, args.prefix_length:]
+        tokens = [t[m.bool()] for t, m in zip(tokens, mask)]
+        ground_truths += [tokenizer.decode(gt) for gt in tokens]
+        generated_captions += [
+            generate_beam(model, tokenizer, embed=prefix_embed)[0]
+            for prefix_embed in prefix_projections
+        ]
+
+        progress.update()
+
+    ground_truths = dict(enumerate(ground_truths))
+    memory_str = "memory" if args.use_memory else "no_memory"
+    filename = f"{output_dir}/{memory_str}_references.json"
+
+    with open(filename, 'w') as fp:
+        json.dump(ground_truths, fp)
+
+    generated_captions = dict(enumerate(generated_captions))
+    filename = f"{output_dir}/{memory_str}_captions.json"
+
+    with open(filename, 'w') as fp:
+        json.dump(generated_captions, fp)
 
 
 def main(args) -> None:
-    """Main training routine."""
+    """Main function."""
     if args.use_video_dataset:
         if args.use_memory:
             dataset = ActivityNetDataset(args.data, args.bs, args.prefix_length)
@@ -170,7 +134,7 @@ def main(args) -> None:
             max_knn_memories = args.max_knn_memories,
             num_retrieved_memories = args.num_retrieved_memories
         )
-        logging.info("Train only prefix")
+        logging.info("Evaluate only prefix")
     else:
         model = ClipCaptionModel(
             args.prefix_length,
@@ -183,15 +147,19 @@ def main(args) -> None:
             max_knn_memories = args.max_knn_memories,
             num_retrieved_memories = args.num_retrieved_memories
         )
-        logging.info("Train both prefix and GPT")
+        logging.info("Evaluate prefix + clip")
         sys.stdout.flush()
 
-    train(
+    if args.checkpoint is not None:
+        model.load_state_dict(torch.load(args.checkpoint, map_location="cpu"))
+    else:
+        logging.info("No checkpoint specified")
+
+    evaluate(
         dataset,
         model,
         args,
         output_dir=args.out_dir,
-        output_prefix=args.prefix,
     )
 
 
@@ -205,13 +173,11 @@ if __name__ == "__main__":
 
     # Data and checkpoints
     parser.add_argument("--checkpoint", default=None, help="checkpoint to load")
-    parser.add_argument("--data", default="src/data/activitynet_ViT-B_32_train_2000.pkl")
+    parser.add_argument("--data", default="src/data/activitynet_ViT-B_32_validation_500.pkl")
     parser.add_argument("--out_dir", default="./checkpoints")
 
     # Training configuration
-    parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--bs", type=int, default=40)
-    parser.add_argument("--save_every", type=int, default=1)
     parser.add_argument("--use_mps", dest="use_mps", action="store_true", help="Use GPU on Apple devices")
 
     # Transformer memory configuration

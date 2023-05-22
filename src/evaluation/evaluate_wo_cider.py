@@ -17,7 +17,6 @@ sys.path.insert(0, './coco-caption') # Hack to allow the import of pycocoeval
 # from sets import Set
 import numpy as np
 from coco_caption.pycocoevalcap.bleu.bleu import Bleu
-from coco_caption.pycocoevalcap.cider.cider import Cider
 from coco_caption.pycocoevalcap.meteor.meteor import Meteor
 from coco_caption.pycocoevalcap.rouge.rouge import Rouge
 from coco_caption.pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
@@ -46,9 +45,7 @@ class ANETcaptions(object):
 
 
         self.verbose = verbose
-        # self.tious = tious
         self.max_proposals = max_proposals
-        # self.pred_fields = prediction_fields
         self.ground_truths = self.import_ground_truths(ground_truth_filenames)
         self.prediction = self.import_prediction(prediction_filename)
         self.tokenizer = PTBTokenizer()
@@ -61,7 +58,7 @@ class ANETcaptions(object):
                 (Bleu(4), ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4"]),
                 (Meteor(),"METEOR"),
                 (Rouge(), "ROUGE_L"),
-                (Cider(), "CIDEr")
+                # (Cider(), "CIDEr")
             ]
         else:
             print('PAS OP! Verbose staat uit!!')
@@ -73,16 +70,11 @@ class ANETcaptions(object):
         results = json.load(open(prediction_filename))
         return results
 
-    def import_ground_truths(self, filenames):
-        gts = []
-        self.n_ref_vids = set()
-        for filename in filenames:
-            gt = json.load(open(filename))
-            self.n_ref_vids.update(gt.keys())
-            gts.append(gt)
-        if self.verbose:
-            print("| Loading GT. #files: %d, #videos: %d" % (len(filenames), len(self.n_ref_vids)))
-        return gts
+    def import_ground_truths(self, filename):
+        gt = json.load(open(filename))
+
+        print("| Loading GT. #videos: %d" %  len(filename))
+        return gt
 
     def check_gt_exists(self, vid_id):
         # check of iedere video id ook een ground truth label heeft
@@ -92,10 +84,9 @@ class ANETcaptions(object):
         return False
 
     def get_gt_vid_ids(self):
-        # make list of video ids??
+        # make list of video ids
         vid_ids = set([])
-        for gt in self.ground_truths:
-            vid_ids |= set(gt.keys())
+        vid_ids |= set(self.ground_truths.keys())
         return list(vid_ids)
 
     def evaluate(self):
@@ -104,8 +95,6 @@ class ANETcaptions(object):
 
 
     def evaluate2(self):
-
-        # This method averages the tIoU precision from METEOR, Bleu, etc. across videos
 
         # define dictionary for predictions and ground truths and
         res = {}
@@ -121,13 +110,13 @@ class ANETcaptions(object):
         # these are gonna be the predictions and gts dict
         # this is a dict where values are caption ids (start from counting of 0)
         # note: this thus does not have the video id anymore (it is disregarded here)!
+        # note 2: this is probably overkill rn, since we have only one caption per id rn, but it doesnt kill
+        # to keep it like this and changing it is too much trouble (can we do later on if necessary/wanted)
         cur_res = {}
         cur_gts = {}
 
-
         # loop through all videos
         for vid_id in gt_vid_ids:
-
 
             # add the video id to the dicts for making caption ids
             vid2capid[vid_id] = []
@@ -140,21 +129,17 @@ class ANETcaptions(object):
             # If we do have a prediction, then we find the scores
             else:
 
-                for gt in self.ground_truths:
-
-                    if vid_id not in gt:
-                            continue
-                    gt_captions = gt[vid_id]
-                    # maak dicts in goede format zodat het de tokenizer in kan
-                    cur_res[unique_index] = [{'caption': self.prediction[vid_id]}]
-                    cur_gts[unique_index] = [{'caption':' '.join(gt_captions['sentences'])}]
-                    vid2capid[vid_id].append(unique_index)
-                    unique_index += 1
+                if vid_id not in self.ground_truths:
+                        continue
+                # maak dicts in goede format zodat het de tokenizer in kan
+                cur_res[unique_index] = [{'caption': self.prediction[vid_id]}]
+                cur_gts[unique_index] = [{'caption': self.ground_truths[vid_id]}]
+                vid2capid[vid_id].append(unique_index)
+                unique_index += 1
 
 
         # Each scorer will compute across all videos and take average score
         output = {}
-
 
         # ACTUALLY COMPUTING THE SCORES!!! (finally)
         for scorer, method in self.scorers:
@@ -163,13 +148,12 @@ class ANETcaptions(object):
             if self.verbose:
                 print('computing %s score...'% scorer.method())
 
-            # For each video  compute the score
+            # For each video compute the score
             all_scores = {}
 
+            # first put data through tokenizer
             tokenize_res = self.tokenizer.tokenize(cur_res)
             tokenize_gts = self.tokenizer.tokenize(cur_gts)
-
-
 
             # this is a dict where the keys are the video_ids, the values are the dicts with tokenized captions (and thus also the caption ids)
             for vid in vid2capid.keys():
@@ -187,21 +171,22 @@ class ANETcaptions(object):
                     continue
                 # compute the scores of all metrics for a given video
                 else:
-                    print('\n')
-                    print('Ground truths: ', gts[vid_id])
-                    print('\n')
-                    print('Predictions: ', res[vid_id])
-                    print('\n')
+                    # print('\n')
+                    # print('Ground truths: ', gts[vid_id])
+                    # print('\n')
+                    # print('Predictions: ', res[vid_id])
+                    # print('\n')
                     score, scores = scorer.compute_score(gts[vid_id], res[vid_id])
-                    print("The scores are: ", scores)
+                    # print("The scores are: ", scores)
                 all_scores[vid_id] = score
 
             print("The number of videos that do not have a score (these are not considered in the scoring): ", empty_count)
             print("The number of videos that DO have a score: ", len(gt_vid_ids) - empty_count)
+            print("\n")
 
             if type(method) == list:
                 # als de gereturnde score een lijst is (volgens mij is dat alleen bij BLUE zo), dan bereken
-                # je daarvan het gemiddelde en maak je al die ?(4) scores het gemiddelde en geef dat als output
+                # je daarvan het gemiddelde en maak je al die (4) scores het gemiddelde en geef dat als output
                 scores = np.mean(list(all_scores.values()), axis=0)
                 for m in range(len(method)):
                     output[method[m]] = scores[m]
@@ -211,7 +196,9 @@ class ANETcaptions(object):
                 output[method] = np.mean(list(all_scores.values()))
                 if self.verbose:
                     print("Scores: %s: %0.3f" % (method, output[method]))
+            print('-' * 80)
         return output
+
 
     # -------- tiou prediction fucntion ended --------
 
@@ -235,11 +222,11 @@ def main(args):
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Evaluate the results stored in a submissions file.')
-    parser.add_argument('-s', '--submission', type=str,  default='sample_submission_ours.json',
+    parser.add_argument('-s', '--submission', type=str,  default='data/memory_captions.json',
                         help='sample submission file for ActivityNet Captions Challenge.')
     # parser.add_argument('-r', '--references', type=str, default='data/val_1.json',
     #                     help='reference files with ground truth captions to compare results against. delimited (,) str')
-    parser.add_argument('-r', '--references', type=str, nargs='+', default=['data/val_1.json', 'data/val_2.json'],
+    parser.add_argument('-r', '--references', type=str, default='data/memory_references.json',
                         help='reference files with ground truth captions to compare results against. delimited (,) str')
     # parser.add_argument('--tious', type=float,  nargs='+', default=[0.3, 0.5, 0.7, 0.9],
     #                     help='Choose the tIoUs to average over.')
