@@ -1,16 +1,20 @@
-"""Create a subset of the dataset."""
+"""Create a subset of the dataset.
+
+For example, to create a subset of 300 videos from the train split, run:
+python src/dataset/create_subset.py --split train --subset 300 --source_dir src/data/train/
+"""
 
 import argparse
 import logging
 import shutil
 from pathlib import Path
 
-import dataset
+from datasets import IterableDataset, load_dataset
 from tqdm import tqdm
 
 
 def create_subset(
-    dataset: dataset.IterableDataset, source_dir: str, args: argparse.Namespace
+    dataset: IterableDataset, source_dir: str, args: argparse.Namespace
 ) -> None:
     """Split frames directory into train, test, and val directories.
 
@@ -43,7 +47,7 @@ def create_subset(
 def main(args: argparse.Namespace) -> None:
     """Main function."""
     logging.info(f"Extracting {args.subset_size} videos from {args.split} split.")
-    dataset = dataset.load_dataset(
+    dataset = load_dataset(
         "Leyo/ActivityNet_Captions",
         split=f"{args.split}[0:{args.subset_size}]",
     )
@@ -63,6 +67,7 @@ if __name__ == "__main__":
         "--split",
         type=str,
         default="train",
+        choices=("train", "validation", "test"),
         help="The split of the dataset to create a subset of.",
     )
     parser.add_argument(

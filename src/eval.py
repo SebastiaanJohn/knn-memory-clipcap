@@ -10,7 +10,7 @@ import torch
 from dataset.activitynet import ActivityNetDataset
 from dataset.activitynet_last_frame import ActivityNetLastFrameDataset
 from dataset.coco import ClipCocoDataset
-from inference.inference import generate_beam
+from evaluation.inference.inference import generate_beam
 from models.clipcap import ClipCaptionModel, ClipCaptionPrefix
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -173,13 +173,11 @@ if __name__ == "__main__":
 
     # Data and checkpoints
     parser.add_argument("--checkpoint", default=None, help="checkpoint to load")
-    parser.add_argument("--data", default="src/data/activitynet_ViT-B_32_validation_100.pkl")
+    parser.add_argument("--data", default="src/data/activitynet_ViT-B_32_validation_500.pkl")
     parser.add_argument("--out_dir", default="./checkpoints")
 
     # Training configuration
-    parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--bs", type=int, default=40)
-    parser.add_argument("--save_every", type=int, default=1)
     parser.add_argument("--use_mps", dest="use_mps", action="store_true", help="Use GPU on Apple devices")
 
     # Transformer memory configuration

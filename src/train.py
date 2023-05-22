@@ -205,7 +205,7 @@ if __name__ == "__main__":
 
     # Data and checkpoints
     parser.add_argument("--checkpoint", default=None, help="checkpoint to load")
-    parser.add_argument("--data", default="src/data/activitynet_ViT-B_32_train_300.pkl")
+    parser.add_argument("--data", default="src/data/activitynet_ViT-B_32_train_2000.pkl")
     parser.add_argument("--out_dir", default="./checkpoints")
 
     # Training configuration
