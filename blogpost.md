@@ -17,6 +17,7 @@
 - [Our contribution](#our-contribution)
 - [Datasets](#datasets)
   - [Pre-processing](#pre-processing)
+  - [Data loading](#data-loading)
 - [Experimental details](#experimental-details)
 - [Results](#results)
 - [Conclusion \& Discussion](#conclusion--discussion)
@@ -84,19 +85,30 @@ Thus, these memory layers incorporate both self-attention (computed using the co
 
 
 # Datasets
-In line with the methodology of ClipCap, we will use the COCO dataset for the initial pretraining stage of our mapping network. This allows the model to learn a general understanding of the relationship between images and text.
+In line with the methodology of ClipCap, we will use the COCO dataset[^lin2014coco] for the initial pretraining stage of our mapping network. This allows the model to learn a general understanding of the relationship between images and text.
 
-Following the pretraining, we will employ the ActivityNet Captions[^krishna2017dense] dataset for fine-tuning. The ActivityNet Captions dataset provides a more task-specific data source explicitly designed for captioning temporally spread-out activities in videos. It contains 20k videos with 100k detailed descriptions of sequences of events within them, making it an optimal choice for our research.
+Following the pretraining, we will employ the ActivityNet Captions dataset[^krishna2017dense] for fine-tuning. The ActivityNet Captions dataset provides a more task-specific data source explicitly designed for captioning temporally spread-out activities in videos. It contains 20k videos with 100k detailed descriptions of sequences of events within them. To the best of our knowledge, this makes it the optimal choice for our research.
 
 ## Pre-processing
-Videos are converted into image frames at a rate of 5 frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to the end of each captioned segment, treating each as an independent _video clip_. The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use a small subset of ActivityNet Captions. The final pre-processed datasets can be downloaded with the links provided in our GitHub repository[^github]. Some statistics of the dataset splits we used for training and testing are shown below.
+Videos are converted into image frames at a rate of 5 frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to the end of each captioned segment, treating each as an independent _video clip_. We will denote the set of video clips by $\{c_i\}_{i=1}^C$, where the amount of frames of clip $c_i$ is given by $f(c_i)$ and the total number of frames is given by $F = \sum_{i=1}^C f(c_i)$. The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded with the links provided in our GitHub repository[^github]. Some statistics of the dataset splits we used for training and testing are shown below.
 
-|                | __Train__ | __Test__ |
-|----------------|-----------|----------|
-| Videos         | 300       | 100      |
-| Video clips    | 1112      | 371      |
-| Frames         | 198020    | 69731    |
-| Length (hours) | 275       | 97       |
+|                 | __Train__ | __Test__ |
+|-----------------|-----------|----------|
+| Videos          | 300       | 100      |
+| Video clips $C$ | 1112      | 371      |
+| Frames $F$      | 198020    | 69731    |
+| Length (hours)  | 275       | 97       |
+
+## Data loading
+Since the external memory layers of the Memorizing Transformer need to be updated sequentially, we have to process each video clip's frames one after the other. This would effectively make the batch size equal to 1, making the training process very inefficient. Instead, we parallelize the operation by processing multiple video clips at a time. An illustration of this parallel data loading process is shown in [figure 2]. In this visualization, video clips are layed out horizontally and stacked vertically, where the amount of rows correponds to the batch size $B$ and the amount of columns is the number of batching steps $S$.
+
+[figure 2]: images/dataloader_activitynet.png "Parallel data processing"
+![Parallel data processing][figure 2]
+_[Figure 2]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither to the real video clips nor their lengths. The red blocks with $\varnothing$ represent padding frames._
+
+It should be noted that since the video clips may not contain the same amount of frames, the rows in the table may not stop at the same step. When a step contains less then $B$ frames, the rest is filled with padding frames. Now, the more steps we have, the longer the training time of our model will be. Thus, we want to minimize the amount of steps $S$.
+
+Mathematically speaking, each row can be seen as a _bin_, where we want to partition a list of numbers $f(c_1), \dots, f(c_C)$ into $B$ bins such that the maximum bin size is minimized. This corresponds to the multiway number parititioning problem[^graham1969bounds], which is a well-known problem in computer science[^wikipedia2023mnp]. Unfortunately, this problem is NP-complete[^garey1979computers], so we cannot find an optimal solution in polynomial time. To evaluate alternative approximation algorithms, the _approximation ratio_ can be used, which is the largest bin returned by such an algorithm divided by the largest sum in the optimal solution. In our code, we use the `prtpy` implementation[^coinor2023prtpy] of the Multifit algorithm[^coffman1978application] [^wikipedia2023multifit], which has a worst-case approximation ratio of 13/11 in the general $B$-bin case[^yue1990exact]. This implies that the amount of padding frames we add will be bounded by $\frac{13}{11} B S - F$.
 
 
 # Experimental details
@@ -129,6 +141,20 @@ Additionally, using the M1 Max GPU across all training processes maintains consi
 
 # References
 [^github]: Our GitHub repository. https://github.com/SebastiaanJohn/knn-memory-clipcap
+
+[^graham1969bounds]: Graham, R. L. (1969). Bounds on multiprocessing timing anomalies. SIAM journal on Applied Mathematics, 17(2), 416-429.
+
+[^garey1979computers]: Garey, M. R., & Johnson, D. S. (1979). Computers and intractability (Vol. 174). San Francisco: freeman, 238.
+
+[^coinor2023prtpy]: The `prtpy` Python library. https://github.com/coin-or/prtpy
+
+[^coffman1978application]: Coffman, Jr, E. G., Garey, M. R., & Johnson, D. S. (1978). An application of bin-packing to multiprocessor scheduling. SIAM Journal on Computing, 7(1), 1-17.
+
+[^wikipedia2023mnp]: The multiway number partitioning problem. https://en.wikipedia.org/wiki/Multiway_number_partitioning
+
+[^wikipedia2023multifit]: The Multifit algorithm. https://en.wikipedia.org/wiki/Multifit_algorithm
+
+[^yue1990exact]: Yue, M. (1990). On the exact upper bound for the multifit processor scheduling algorithm. Annals of Operations Research, 24(1), 233-259.
 
 [^mokady2021clipcap]: Mokady, R., Hertz, A., & Bermano, A. H. (2021). Clipcap: Clip prefix for image captioning. arXiv preprint arXiv:2111.09734.
 
