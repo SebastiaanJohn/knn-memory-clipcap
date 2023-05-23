@@ -10,14 +10,88 @@ import torch
 from dataset.activitynet import ActivityNetDataset
 from dataset.activitynet_last_frame import ActivityNetLastFrameDataset
 from dataset.coco import ClipCocoDataset
-from evaluation.inference.inference import generate_beam
+from inference.inference import generate_beam
 from models.clipcap import ClipCaptionModel, ClipCaptionPrefix
+from train import forward_with_memory
+from torch.nn import functional as nnf
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import GPT2Tokenizer
 
 
-def evaluate(
+def fill(tensor, num_rows, device):
+    """ Append rows of zeros to a tensor. """
+    shape = [num_rows] + list(tensor.shape[1:])
+    zeros = torch.zeros(shape, dtype=tensor.dtype)
+    return torch.cat((tensor, zeros.to(device)))
+
+
+def compute_loss(
+    dataset: ClipCocoDataset | ActivityNetDataset
+            | ActivityNetLastFrameDataset,
+    model: ClipCaptionModel,
+    args: argparse.Namespace
+) -> ClipCaptionModel:
+    """Evaluate the model.
+
+    Args:
+        dataset (ClipCocoDataset | ActivityNetDataset
+            | ActivityNetLastFrameDataset): The dataset to use.
+        model (ClipCaptionModel): The model to evaluate.
+        args (argparse.Namespace): The arguments.
+    """
+    if args.use_mps:
+        device = torch.device("mps")
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logging.info(f"Using device: {device}")
+
+    model = model.to(device)
+    model.eval()
+
+    eval_dataloader = DataLoader(
+        dataset, batch_size=args.bs, shuffle=False, drop_last=False
+    )
+
+    total_loss, num_captions = 0.0, 0
+    for (tokens, mask, prefix) in tqdm(eval_dataloader):
+        tokens, mask, prefix = (
+            tokens.to(device),
+            mask.to(device),
+            prefix.to(device, dtype=torch.float32),
+        )
+
+        batch_size = len(tokens)
+
+        if args.use_memory:
+            outputs, tokens = forward_with_memory(model, tokens, prefix, mask)
+
+            if outputs is None:
+                continue
+        else:
+            if batch_size < args.bs:
+                tokens = fill(tokens, args.bs - batch_size, device)
+                prefix = fill(prefix, args.bs - batch_size, device)
+                mask = fill(mask, args.bs - batch_size, device)
+
+            outputs = model.forward(tokens, prefix, mask)
+
+        logits = outputs.logits[:batch_size, model.prefix_length - 1 : -1]
+        loss = nnf.cross_entropy(
+            logits.reshape(-1, logits.shape[-1]),
+            tokens[:batch_size].flatten(),
+            ignore_index=0,
+            reduction = "sum"
+        )
+
+        total_loss += loss.item()
+        num_captions += len(tokens)
+
+    average_loss = total_loss / num_captions
+    return average_loss
+
+
+def generate_captions(
     dataset: ClipCocoDataset | ActivityNetDataset
             | ActivityNetLastFrameDataset,
     model: ClipCaptionModel,
@@ -39,8 +113,6 @@ def evaluate(
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logging.info(f"Using device: {device}")
 
-    batch_size = args.bs
-
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -49,23 +121,19 @@ def evaluate(
 
     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
 
-    if args.use_memory:
-        eval_dataloader = DataLoader(
-            dataset, batch_size=batch_size, shuffle=False, drop_last=False
-        )
-    else:
-        eval_dataloader = DataLoader(
-            dataset, batch_size=batch_size, shuffle=True, drop_last=True
-        )
+    eval_dataloader = DataLoader(
+        dataset, batch_size=args.bs, shuffle=False, drop_last=False
+    )
 
     ground_truths, generated_captions = [], []
-    progress = tqdm(total=len(eval_dataloader))
-    for i, (tokens, mask, prefix) in enumerate(eval_dataloader):
+    for (tokens, mask, prefix) in tqdm(eval_dataloader):
         tokens, mask, prefix = (
             tokens.to(device),
             mask.to(device),
             prefix.to(device, dtype=torch.float32),
         )
+
+        batch_size = len(tokens)
 
         if args.use_memory:
             contains_caption = (mask == 1).any(dim=1)
@@ -76,15 +144,17 @@ def evaluate(
             )
 
             if len(idx) == 0:
-                progress.update()
                 continue
 
             tokens, mask, prefix_projections =  \
                 tokens[idx], mask[idx], prefix_projections[idx]
         else:
+            if batch_size < args.bs:
+                prefix = fill(prefix, args.bs - batch_size, device)
+
             prefix_projections = model.clip_project(prefix).view(
                 -1, 1, model.prefix_length, model.gpt_embedding_size
-            )
+            )[:batch_size]
 
         mask = mask[:, args.prefix_length:]
         tokens = [t[m.bool()] for t, m in zip(tokens, mask)]
@@ -93,8 +163,6 @@ def evaluate(
             generate_beam(model, tokenizer, embed=prefix_embed)[0]
             for prefix_embed in prefix_projections
         ]
-
-        progress.update()
 
     ground_truths = dict(enumerate(ground_truths))
     memory_str = "memory" if args.use_memory else "no_memory"
@@ -134,7 +202,6 @@ def main(args) -> None:
             max_knn_memories = args.max_knn_memories,
             num_retrieved_memories = args.num_retrieved_memories
         )
-        logging.info("Evaluate only prefix")
     else:
         model = ClipCaptionModel(
             args.prefix_length,
@@ -147,7 +214,6 @@ def main(args) -> None:
             max_knn_memories = args.max_knn_memories,
             num_retrieved_memories = args.num_retrieved_memories
         )
-        logging.info("Evaluate prefix + clip")
         sys.stdout.flush()
 
     if args.checkpoint is not None:
@@ -155,7 +221,7 @@ def main(args) -> None:
     else:
         logging.info("No checkpoint specified")
 
-    evaluate(
+    generate_captions(
         dataset,
         model,
         args,
