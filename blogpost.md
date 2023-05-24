@@ -82,7 +82,7 @@ Specifically, each memory layer has an external memory consisting of keys and va
 [figure 2]: images/mem_trans.png "Memorizing Transformer architecture"
 ![Memorizing Transformer Architecture][figure 2]
 
-_[Figure 2]: Overview of the Memorizing Transformer Architecture._
+_[Figure 2]: Overview of the Memorizing Transformer Architecture, which adds an external memory to the standard transformer architecture. The external memory is accessed using approximate kNN lookup._
 
 The approximate kNN algorithm allows the external memory to be scaled quite significantly, as there exist efficient implementations of this algorithm. Additionally, since the external memory does not participate in backpropagation, it functions as a non-learnable parameter, enabling even more efficient scaling of memory size.
 
