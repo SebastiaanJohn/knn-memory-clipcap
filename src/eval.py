@@ -75,11 +75,12 @@ def compute_loss(
                 mask = fill(mask, args.bs - batch_size, device)
 
             outputs = model.forward(tokens, prefix, mask)
+            tokens = tokens[:batch_size]
 
         logits = outputs.logits[:batch_size, model.prefix_length - 1 : -1]
         loss = nnf.cross_entropy(
             logits.reshape(-1, logits.shape[-1]),
-            tokens[:batch_size].flatten(),
+            tokens.flatten(),
             ignore_index=0,
             reduction = "sum"
         )
