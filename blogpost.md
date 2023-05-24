@@ -90,7 +90,11 @@ In line with the methodology of ClipCap, we will use the COCO dataset[^lin2014co
 Following the pretraining, we will employ the ActivityNet Captions dataset[^krishna2017dense] for fine-tuning. The ActivityNet Captions dataset provides a more task-specific data source explicitly designed for captioning temporally spread-out activities in videos. It contains 20k videos with 100k detailed descriptions of sequences of events within them. To the best of our knowledge, this makes it the optimal choice for our research.
 
 ## Pre-processing
-Videos are converted into image frames at a rate of 5 frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to the end of each captioned segment, treating each as an independent _video clip_. We will denote the set of video clips by $\{c_i\}_{i=1}^C$, where the amount of frames of clip $c_i$ is given by $f(c_i)$ and the total number of frames is given by $F = \sum_{i=1}^C f(c_i)$. The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded with the links provided in our GitHub repository[^github]. Some statistics of the dataset splits we used for training and testing are shown below.
+Videos are converted into image frames at a rate of 5 frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to the end of each captioned segment, treating each such segment as an independent _video clip_. We will denote the set of $C$ video clips by 
+$$\\{ c_i\\}^C_{i=1}$$
+where the amount of frames of clip $c_i$ is given by $f(c_i)$ and the total number of frames is given by 
+$$F = \sum^C_{i=1} f(c_i)$$
+The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded with the links provided in our GitHub repository[^github]. Some statistics of the dataset splits we used for training and testing are shown below:
 
 |                 | __Train__ | __Test__ |
 |-----------------|-----------|----------|
@@ -104,7 +108,7 @@ Since the external memory layers of the Memorizing Transformer need to be update
 
 [figure 2]: images/dataloader_activitynet.png "Parallel data processing"
 ![Parallel data processing][figure 2]
-_[Figure 2]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither to the real video clips nor their lengths. The red blocks with $\varnothing$ represent padding frames._
+_[Figure 2]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths. The red blocks with $\varnothing$ represent padding frames._
 
 It should be noted that since the video clips may not contain the same amount of frames, the rows in the table may not stop at the same step. When a step contains less then $B$ frames, the rest is filled with padding frames. Now, the more steps we have, the longer the training time of our model will be. Thus, we want to minimize the amount of steps $S$.
 
@@ -114,7 +118,7 @@ Mathematically speaking, each row can be seen as a _bin_, where we want to parti
 # Experimental details
 The foundational model was initially pre-trained on the COCO dataset throughout ten epochs. This process was carried out by replicating the parameters used in ClipCap. Specifically, we utilized a batch size of 40, a prefix dimension of 512, and a prefix length of 10. The learning rate for this phase was set at 2e-5, and we implemented an AdamW optimizer to regulate the training process.
 
-Following this pre-training phase, we fine-tuned the baseline and the Memorizing Transformer enhanced models. The fine-tuning was executed on the ActivityNet Captions dataset, again over ten epochs, while maintaining the same parameters as in the pre-training stage. This step ensured that the models effectively adapted to the specific requirements of the video captioning task.
+Following this pre-training phase, we fine-tuned the baseline and Memorizing Transformer-enhanced models. The fine-tuning was executed on the ActivityNet Captions dataset, again over ten epochs, while maintaining the same parameters as in the pre-training stage. This step ensured that the models effectively adapted to the specific requirements of the video captioning task.
 
 Our model selection was guided by the validation loss, with the best-performing model based on this criterion chosen for further evaluation. The training process for all models was conducted on a single M1 Max GPU to ensure uniform computational resources.
 Given the same pre-training conditions, the fine-tuning process allows us to observe how effectively our modification performs relative to the baseline. This strategy offers a fair and accurate comparison of both models' performance on the video captioning task.
