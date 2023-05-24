@@ -106,13 +106,9 @@ The frames are individually embedded using the CLIP image encoder, and the capti
 ## Data loading
 Since the external memory layers of the Memorizing Transformer need to be updated sequentially, we have to process each video clip's frames one after the other. This would effectively make the batch size equal to 1, making the training process very inefficient. Instead, we parallelize the operation by processing multiple video clips at a time. An illustration of this parallel data loading process is shown in [figure 2]. In this visualization, video clips are layed out horizontally and stacked vertically, where the amount of rows correponds to the batch size $B$ and the amount of columns is the number of batching steps $S$.
 
-$$
-\usepackage{amssymb}
-$$
-
 [figure 2]: images/dataloader_activitynet.png "Parallel data processing"
 ![Parallel data processing][figure 2]
-_[Figure 2]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths. The red blocks with $\varnothing$ represent padding frames._
+_[Figure 2]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths. The red blocks with $\emptyset$ represent padding frames._
 
 It should be noted that since the video clips may not contain the same amount of frames, the rows in the table may not stop at the same step. When a step contains less then $B$ frames, the rest is filled with padding frames. Now, the more steps we have, the longer the training time of our model will be. Thus, we want to minimize the amount of steps $S$.
 
