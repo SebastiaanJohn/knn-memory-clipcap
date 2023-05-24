@@ -108,7 +108,7 @@ Since the external memory layers of the Memorizing Transformer need to be update
 
 [figure 2]: images/dataloader_activitynet.png "Parallel data processing"
 ![Parallel data processing][figure 2]
-_[Figure 2]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths. The red blocks with $ \emptyset $ represent padding frames._
+_[Figure 2]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths. The red blocks with $\varnothing$ represent padding frames._
 
 It should be noted that since the video clips may not contain the same amount of frames, the rows in the table may not stop at the same step. When a step contains less then $B$ frames, the rest is filled with padding frames. Now, the more steps we have, the longer the training time of our model will be. Thus, we want to minimize the amount of steps $S$.
 
