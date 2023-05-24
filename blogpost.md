@@ -86,7 +86,9 @@ _[Figure 2]: Overview of the Memorizing Transformer Architecture._
 
 The approximate kNN algorithm allows the external memory to be scaled quite significantly, as there exist efficient implementations of this algorithm. Additionally, since the external memory does not participate in backpropagation, it functions as a non-learnable parameter, enabling even more efficient scaling of memory size.
 
-Thus, these memory layers incorporate both self-attention (computed using the context window) and top-k attention (computed using the external memory). To calculate the next token, these two attention mechanisms are combined using a gating mechanism, as illustrated in figure TODO. The gating mechanism involves a learnable scalar called the _gate_ (bounded between 0 and 1 through the sigmoid function), which determines the relative importance of each of the attention mechanisms.
+Thus, these memory layers incorporate both self-attention (computed using the context window) and top-k attention (computed using the external memory). To calculate the next token, these two attention mechanisms are combined using a gating mechanism:
+$$V_a = V_m \cdot g + V_c \cdot (1-g)$$
+Here, the the gating mechanism involves a learnable scalar $g$ called the _gate_ (bounded between 0 and 1 through the sigmoid function), which determines the relative importance of each of the attention mechanisms $V_m$ and $V_c$ to calculate the combined result of both types of attention.
 
 
 # Datasets
