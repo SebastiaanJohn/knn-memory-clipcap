@@ -91,7 +91,7 @@ Following the pretraining, we will employ the ActivityNet Captions dataset[^kris
 
 ## Pre-processing
 Videos are converted into image frames at a rate of 5 frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to the end of each captioned segment, treating each such segment as an independent _video clip_. We will denote the set of video clips by 
-$ \\{ c_i \\}^C_{i=1}$
+$ \{ c_i \}^C_{i=1}$
 where the amount of frames of clip $c_i$ is given by $f(c_i)$ and the total number of frames is given by 
 $$F = \sum^C_{i=1} f(c_i)$$
 The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded with the links provided in our GitHub repository[^github]. Some statistics of the dataset splits we used for training and testing are shown below.
