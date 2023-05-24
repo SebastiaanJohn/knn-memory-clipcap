@@ -88,7 +88,7 @@ The approximate kNN algorithm allows the external memory to be scaled quite sign
 
 Thus, these memory layers incorporate both self-attention (computed using the context window) and top-k attention (computed using the external memory). To calculate the next token, these two attention mechanisms are combined using a gating mechanism:
 $$V_a = V_m \cdot g + V_c \cdot (1-g)$$
-Here, the the gating mechanism involves a learnable scalar $g$ called the _gate_ (bounded between 0 and 1 through the sigmoid function), which determines the relative importance of each of the attention mechanisms $V_m$ and $V_c$ to calculate the combined result of both types of attention.
+Here, the the gating mechanism involves a learnable scalar $g$ called the _gate_ (bounded between 0 and 1 through the sigmoid function), which determines the relative importance of each of the attention mechanisms $V_m$ (the top-k attention) and $V_c$ (the local attention) to calculate the combined result of both types of attention $V_a$.
 
 
 # Datasets
