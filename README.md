@@ -1,4 +1,4 @@
-# kNN-Memory with ClipCap: Enhanced Long-Range Dependency Handling
+# MemClipCap: Enhancing ClipCap with long-range dependency handling for video captioning
 
 This repository provides the code for our project, which combines kNN-Memory and ClipCap to improve long-range dependency handling. The project builds on the [ClipCap](https://github.com/rmokady/CLIP_prefix_caption) and [Memorizing Transformers](https://github.com/lucidrains/memorizing-transformers-pytorch) repositories. This work is conducted as part of the academic curriculum for the [Deep Learning 2](https://uvadl2c.github.io) course at the University of Amsterdam. You can read our comphrehensive report [here](https://github.com/SebastiaanJohn/knn-memory-clipcap/blob/main/blogpost.md).
 
