@@ -182,7 +182,7 @@ Additionally, using the M1 Max GPU across all training processes maintains consi
 
 [^wu2022memorizing]: Wu, Y. et al. (2022). "Memorizing Transformers". In: International Conference on Learning Representations.
 
-[^kitaev2020reformer]: Kitaev, N. and Kaiser, L. (2020). "Reformer: The Efficient Transformer". From: https://ai.googleblog.com/2020/01/reformer-efficient-transformer.html.
+[^kitaev2020reformer]: Kitaev, N., Kaiser, Ł., & Levskaya, A. (2020). Reformer: The efficient transformer. arXiv preprint arXiv:2001.04451.
 
 [^sun2015human]: Sun, L. et al. (2015). "Human action recognition using factorized spatio-temporal convolutional networks". In: Proceedings of the IEEE international conference on computer vision (pp. 4597-4605).
 
