@@ -60,9 +60,11 @@ def dump_wrapper(
             of frames dumped.
     """
     filename_path = Path(filename)
+    print(filename_path)
     filename_noext = filename_path.stem
+    print(filename_noext)
     frame_dir = dirname / filename_noext
-
+    print(frame_dir)
     # Check if the input file exists
     if not filename_path.is_file():
         logging.debug(f"Unexistent file {filename}")

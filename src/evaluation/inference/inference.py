@@ -3,6 +3,7 @@ import torch
 import torch.nn.functional as nnf
 from tqdm import trange
 
+
 #Caption prediction (from the transformer inference notebook)
 
 def generate_beam(model, tokenizer, beam_size: int = 5, prompt=None, embed=None,
@@ -80,7 +81,6 @@ def generate2(
         stop_token: str = '.',
 ):
     model.eval()
-    generated_num = 0
     generated_list = []
     stop_token_index = tokenizer.encode(stop_token)[0]
     filter_value = -float("Inf")

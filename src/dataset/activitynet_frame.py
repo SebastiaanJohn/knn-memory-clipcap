@@ -10,11 +10,11 @@ from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
 
-class ActivityNetLastFrameDataset(Dataset):
-    """Dataset for loading the last frame of ActivityNet video clips."""
+class ActivityNetFrameDataset(Dataset):
+    """Dataset for loading specified frames of ActivityNet video clips."""
 
     def __init__(
-        self, prepr_dataset_path: str, prefix_length: int
+        self, prepr_dataset_path: str, prefix_length: int, frame: str = "last"
     ) -> None:
         """Initialize an ActivityNetDataset object.
 
@@ -23,32 +23,53 @@ class ActivityNetLastFrameDataset(Dataset):
                 pickle file. The pickle file should contain a HuggingFace
                 `datasets.Dataset` object.
             prefix_length (int): The length of the caption's prefix.
+            frame (str, optional): Which frame to use from the video clip. Can be 'first', 'last', 'middle', 'all'.
         """
         self.prefix_length = prefix_length
+        self.frame = frame  # Save the frame option
+        file_path = Path(prepr_dataset_path)
 
         # Load pre-processed dataset.
         logging.info("Loading pre-processed dataset...")
-        with open(prepr_dataset_path, "rb") as f:
-            self.prepr_dataset = pickle.load(f)
+        with Path.open(file_path, "rb") as f:
+            prepr_dataset = pickle.load(f)
         self.pad_token_id = 198
-        logging.info(
-            f"Dataset contains {self.prepr_dataset.num_rows} video clips."
-        )
 
-        # We only need the last frame of each video clip.
-        self.prepr_dataset = self.prepr_dataset.map(
-            lambda x: {
-                "frames": x["frames"][-1].unsqueeze(0),
-                "caption": x["caption"],
-                "video_id": x["video_id"],
-            },
-            num_proc=1,
-        )
+        # Expand the dataset according to the frame option.
+        self.prepr_dataset = self._expand_dataset(prepr_dataset)
+
+        logging.info(f"Expanded dataset contains {len(self.prepr_dataset)} frames.")
 
         # Get the maximum sequence length.
         self.max_seq_len = max(len(data["caption"]) for data in self.prepr_dataset)
 
         logging.info(f"Max sequence length: {self.max_seq_len}")
+
+    def _expand_dataset(self, prepr_dataset: list[dict]) -> list[dict]:
+        """Expands the dataset according to the frame option."""
+        expanded_dataset = []
+        for data in prepr_dataset:
+            frames = self._extract_frames(data["frames"])
+            for frame in frames:
+                expanded_dataset.append({
+                    "frames": frame.unsqueeze(0),
+                    "caption": data["caption"],
+                    "video_id": data["video_id"],
+                })
+        return expanded_dataset
+
+    def _extract_frames(self, frames: torch.Tensor) -> list[torch.Tensor] | torch.Tensor:
+        """Extracts the frames according to the frame option."""
+        if self.frame == "all":
+            return frames
+        elif self.frame == "middle":
+            return [frames[len(frames) // 2]]
+        elif self.frame == "first":
+            return [frames[0]]
+        elif self.frame == "last":
+            return [frames[-1]]
+        else:
+            raise ValueError(f"Invalid frame option: {self.frame}")
 
     def pad_tokens(self, item: int) -> tuple[torch.Tensor, torch.Tensor]:
         """Pad tokens to max_seq_len and create mask.
@@ -100,12 +121,10 @@ def main(args: argparse.Namespace) -> None:
         args (argparse.Namespace): The command line arguments.
     """
     # Create the dataset and dataloader.
-    clip_model_type = args.clip_model_type.replace("/", "_")
-    dataset = ActivityNetLastFrameDataset(
-        Path("src/data")
-        / f"activitynet_{clip_model_type}_{args.split}_{args.subset}.pkl",
-        args.batch_size,
+    dataset = ActivityNetFrameDataset(
+        args.dataset_path,
         args.prefix_length,
+        args.frame,
     )
     dataloader = DataLoader(
         dataset, batch_size=args.batch_size, num_workers=args.num_workers
@@ -138,24 +157,10 @@ if __name__ == "__main__":
 
     # Define command line arguments.
     parser.add_argument(
-        "--split",
+        "--dataset_path",
         type=str,
-        default="train",
-        choices=("train", "validation", "test"),
-        help="The dataset split to use.",
-    )
-    parser.add_argument(
-        "--subset",
-        type=int,
-        default=300,
-        help="Number of videos to use from the split.",
-    )
-    parser.add_argument(
-        "--clip_model_type",
-        type=str,
-        default="ViT-B/32",
-        choices=("RN50", "RN101", "RN50x4", "ViT-B/32"),
-        help="The CLIP model to use.",
+        required=True,
+        help="Path to the pre-processed dataset.",
     )
     parser.add_argument(
         "--batch_size",
@@ -174,6 +179,12 @@ if __name__ == "__main__":
         type=int,
         default=0,
         help="Number of workers to use for data loading.",
+    )
+    parser.add_argument(
+        "--frame",
+        help="Whether to use the last frame, first, middle, or all the frames of the video clip.",
+        choices=("last", "first", "middle", "all"),
+        default="last",
     )
 
     # Parse the arguments.
