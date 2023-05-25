@@ -88,7 +88,7 @@ The approximate kNN algorithm allows the external memory to be scaled quite sign
 
 Thus, these memory layers incorporate both local self-attention (computed using the context window) and top-k attention (computed using the external memory). To calculate the next token, these two attention mechanisms are combined using a gating mechanism:
 $$V_a = V_m \cdot g + V_c \cdot (1-g)$$
-Here, the the gating mechanism involves a learnable scalar $g$ called the _gate_ (bounded between 0 and 1 through the sigmoid function), which determines the relative importance of each of the attention mechanisms $V_m$ (the top-k attention) and $V_c$ (the local attention) to calculate the combined result $V_a$ of both types of attention.
+Here, the the gating mechanism involves a learnable scalar $g$ called the _gate_ (bounded between 0 and 1 through the sigmoid function), which determines the relative importance of each of the attention mechanisms $`V_m`$ (the top-k attention) and $`V_c`$ (the local attention) to calculate the combined result $`V_a`$ of both types of attention.
 
 
 # Datasets
@@ -97,11 +97,7 @@ In line with the methodology of ClipCap, we will use the COCO dataset[^lin2014co
 Following the pretraining, we will employ the ActivityNet Captions dataset[^krishna2017dense] for fine-tuning. The ActivityNet Captions dataset provides a more task-specific data source explicitly designed for captioning temporally spread-out activities in videos. It contains 20k videos with 100k detailed descriptions of sequences of events within them. To the best of our knowledge, this makes it the optimal choice for our research.
 
 ## Pre-processing
-Videos are converted into image frames at a rate of 5 frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to the end of each captioned segment, treating each such segment as an independent _video clip_. We will denote the set of $C$ video clips by 
-$$\\{ c_i\\}^C_{i=1}$$
-where the amount of frames of clip $c_i$ is given by $f(c_i)$ and the total number of frames is given by 
-$$F = \sum^C_{i=1} f(c_i)$$
-The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded with the links provided in our GitHub repository[^github]. Some statistics of the dataset splits we used for training and testing are shown below:
+Videos are converted into image frames at a rate of 5 frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to the end of each captioned segment, treating each such segment as an independent _video clip_. We will denote the set of $C$ video clips by $`\{c_i\}^C_{i=1}`$ where the amount of frames of clip $`c_i`$ is given by $`f(c_i)`$ and the total number of frames is given by $`F = {\sum}_{i=1}^C f(c_i)`$. The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded with the links provided in our GitHub repository[^github]. Some statistics of the dataset splits we used for training and testing are shown below:
 
 |                 | __Train__ | __Test__ |
 |-----------------|-----------|----------|
@@ -115,11 +111,11 @@ Since the external memory layers of the Memorizing Transformer need to be update
 
 [figure 3]: images/dataloader_activitynet.png "Parallel data processing"
 ![Parallel data processing][figure 3]
-_[Figure 3]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths. The red blocks with $\varnothing$ represent padding frames._
+_[Figure 3]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths. The red blocks with $`\varnothing`$ represent padding frames._
 
 It should be noted that since the video clips may not contain the same amount of frames, the rows in the table may not stop at the same step. When a step contains less then $B$ frames, the rest is filled with padding frames. Now, the more steps we have, the longer the training time of our model will be. Thus, we want to minimize the amount of steps $S$.
 
-Mathematically speaking, each row can be seen as a _bin_, where we want to partition a list of numbers $f(c_1), \dots, f(c_C)$ into $B$ bins such that the maximum bin size is minimized. This corresponds to the multiway number parititioning problem[^graham1969bounds], which is a well-known problem in computer science[^wikipedia2023mnp]. Unfortunately, this problem is NP-complete[^garey1979computers], so we cannot find an optimal solution in polynomial time. To evaluate alternative approximation algorithms, the _approximation ratio_ can be used, which is the largest bin returned by such an algorithm divided by the largest sum in the optimal solution. In our code, we use the `prtpy` implementation[^coinor2023prtpy] of the Multifit algorithm[^coffman1978application] [^wikipedia2023multifit], which has a worst-case approximation ratio of 13/11 in the general $B$-bin case[^yue1990exact]. This implies that the amount of padding frames we add will be bounded by $\frac{13}{11} B S - F$.
+Mathematically speaking, each row can be seen as a _bin_, where we want to partition a list of numbers $`f(c_1), \dots, f(c_C)`$ into $B$ bins such that the maximum bin size is minimized. This corresponds to the multiway number parititioning problem[^graham1969bounds], which is a well-known problem in computer science[^wikipedia2023mnp]. Unfortunately, this problem is NP-complete[^garey1979computers], so we cannot find an optimal solution in polynomial time. To evaluate alternative approximation algorithms, the _approximation ratio_ can be used, which is the largest bin returned by such an algorithm divided by the largest sum in the optimal solution. In our code, we use the `prtpy` implementation[^coinor2023prtpy] of the Multifit algorithm[^coffman1978application] [^wikipedia2023multifit], which has a worst-case approximation ratio of $\frac{13}{11}$ in the general $B$-bin case[^yue1990exact]. This implies that the amount of padding frames we add will be bounded by $\frac{13}{11} B S - F$.
 
 
 # Experimental details
