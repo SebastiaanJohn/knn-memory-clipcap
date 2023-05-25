@@ -6,11 +6,11 @@
 > University of Amsterdam
 
 - [Introduction](#introduction)
+  - [Related Work](#related-work)
   - [ClipCap Summary](#clipcap-summary)
   - [Main results](#main-results)
   - [Additional Results](#additional-results)
   - [Ablation Studies](#ablation-studies)
-  - [Related Work](#related-work)
 - [Exploring ClipCap's Capabilities](#exploring-clipcaps-capabilities)
   - [Strengths](#strengths)
   - [Weaknesses](#weaknesses)
@@ -31,7 +31,16 @@ Image captioning is a multimodal task that involves generating textual descripti
 
 The key idea behind our research is that the original ClipCap architecture will not be good at captioning videos, since it does not remember information from previously seen input frames. We propose that by integrating a Memorizing Transformer[^wu2022memorizing] into the model, it will be able to remember information from previous frames and thus be able to generate better captions for videos than a baseline image capioning model that does not remember information from previous frames.
 
-We will first provide a brief overview of the ClipCap method and its capabilities. Then, we will discuss the strengths and weaknesses of the method, which will motivate our proposed enhancement. Following this, we will present how we implemented this enhancement and why we made certain design decisions. Finally, we will present our results and conclude with a discussion of our findings.
+We will first provide an overview of relevant previous work, followed by a brief overview of the ClipCap method and its capabilities. Then, we will discuss the strengths and weaknesses of the method, which will motivate our proposed enhancement. Following this, we will present how we implemented this enhancement and why we made certain design decisions. Finally, we will present our results and conclude with a discussion of our findings.
+
+## Related Work
+Where image captioning is a task that has been extensively explored using various methods, video captioning has proven to be more challenging in existing research.
+
+Progress in utilizing long short-term memory (LSTM) models for image captioning has led to research into employing LSTMs for video captioning as well. A video is treated as a sequence of features, and the LSTM is trained on video-sentence pairs [^gao2017video]. However, this approach does not allow for the selection of salient features that are more important than others, resulting in static representations of videos. In response to this limitation, an attention-based LSTM model was proposed, which incorporates the attention mechanism and an LSTM decoder to generate the best next tokens at time t, using visual features at time t and word embedding features at time t-1 [^gao2017video]. This way, the attention-based LSTM can capture the salient temporal structures of videos. Despite their sequential nature, such LSTM-based models suffer from a significant drawback, namely long training times. While ClipMemCap utilizes powerful pretrained models, which can be frozen or fine-tuned, this is not the case with LSTM-based models.
+
+Recent advancements in transformer-based models have also provided options for video captioning. Research by Zhou et al. (2018) introduced an encoder-decoder based end-to-end transformer model for dense video captioning[^zhou2018dense]. While this model takes advantage of the strengths of transformer-based models, it lacks the adaptability of ClipMemCap, which allows for easy swapping of models due to its modular structure. Another notable advantage of ClipMemCap is its utilization of a pre-trained LLM, which is not incorporated in the model proposed by Zhou et al.
+
+In the domain of multimodal vision-language, alternative methods leverage pre-training with the BERT architecture[^li2020oscar] [^devlin2018bert] [^zhang2021vinvl] [^zhou2020unified] [^wang2021simvlm]. However, these methods are either limited to specific datasets[^li2020oscar] [^zhang2021vinvl] [^zhou2020unified], compromising their generalizability, or involve computationally intensive pre-training processes[^wang2021simvlm]. In contrast, the modularity of the ClipCap architecture makes it efficient to train and relatively simple to implement, positioning it as a promising alternative to these methods.
 
 ## ClipCap Summary
 The ClipCap method utilizes a pipeline of pre-trained models to generate captions for images. This pipeline consists of the CLIP[^radford2021learning] model, a mapping network, and a pre-trained language model (LM), namely GPT-2[^radford2019language] (see [figure 1]). The CLIP image encoder extracts high-level information from the visual data while the pre-trained LM generates the caption. The mapping network serves as a bridge between the two, linking the latent spaces of the two models.
@@ -53,10 +62,6 @@ Multiple other experiments were conducted to determine when ClipCap performs wel
 ## Ablation Studies
 The authors conducted multiple ablation studies to verify and motivate ClipCap's design choices. They found that the mapping network is crucial for the model to perform well and that a Transformer architecture is superior when the LM is frozen, while an MLP is more effective when the LM is additionally fine-tuned. Furthermore, the prefix length was a crucial hyperparameter; a prefix that is too short results in a lack of expressiveness, while a prefix that is too long results in a very large model that will be slow to train.
 
-## Related Work
-Previous research has delved into both image-based and video-based recognition tasks. Progress in Long Short-Term Memory networks (LSTMs)[^gao2017video], spatio-temporal feature learning for 3D convolutional networks[^tran2015learning], and long-term recurrent convolutional networks[^donahue2015long] have produced models capable of generating captions for both images and videos. However, these models demand significant computational resources and extensive data. Alternative methods leverage vision and language pre-training with the BERT architecture[^li2020oscar] [^devlin2018bert] [^zhang2021vinvl] [^zhou2020unified] [^wang2021simvlm]. Nonetheless, these methods are either limited to specific datasets[^li2020oscar] [^zhang2021vinvl] [^zhou2020unified], which leads to compromised generalizability, or they involve a pre-training process that is computationally intensive[^wang2021simvlm]. In contrast, the modularity of the ClipCap architecture is efficient to train and relatively simple to implement, which makes it a promising alternative to these methods.
-
-
 # Exploring ClipCap's Capabilities
 <!-- Exposition of its weaknesses/strengths/potential which triggered your group to come up with a response. -->
 
@@ -75,20 +80,19 @@ Apart from images, other visual data such as video segments naturally have long-
 <!-- Describe your novel contribution. -->
 Our research aims to explore potential performance enhancements in video captioning by integrating a Memorizing Transformer[^wu2022memorizing] into ClipCap's mapping network. The original paper applies the concept of Memorizing Transformers to language models, aiming to address the challenge of long-term dependencies within textual information. We propose that this approach can be extended to incorporate visual information in the context of video captioning, where long-range dependencies are also prevalent.
 
-The Memorizing Transformer is an extension of the original Transformer[^vaswani2017attention] architecture that incorporates so-called _memory layers_ (see [figure 2]). Typically, a Transformer can only take a fixed amount of tokens into account, called the _context window_, when calculating attention[^google_trans]. Increasing the size of this _context window_ is impractical, as it will cause great computational cost. The Memorizing Transformer aims to improve upon this by adding an external memory component into the conventional self-attention mechanism.
+The Memorizing Transformer is an extension of the original Transformer[^vaswani2017attention] architecture that incorporates so-called _memory layers_ (see [figure 2]). Typically, a Transformer can only take a fixed amount of tokens into account, called the _context window_, when calculating attention[^vaswani2017attention]. Increasing the size of this window is impractical, as the memory size required scales quadratically with the size of the context window[^kitaev2020reformer]. The Memorizing Transformer aims to improve upon this by adding an external memory component into the conventional self-attention mechanism.
 
 Specifically, each memory layer has an external memory consisting of keys and values generated by the self-attention mechanism for previous tokens. This memory can be attended to by subsequent token chunks to retrieve valuable information. Rather than employing full attention over the weighted sum of all keys and values in the memory, an approximate k-nearest neighbours (kNN) algorithm is used to attend to the memory, identifying the most relevant keys and values (the number of which is a hyperparameter). These selected keys and values are then utilized to compute the so-called _top-k attention_.
 
-[figure 2]: images/mem_trans.png "Memorizing Transformer architecture"
+[figure 2]: images/Memorizing_Transformer.png "Memorizing Transformer architecture"
 ![Memorizing Transformer Architecture][figure 2]
-
-_[Figure 2]: Overview of the Memorizing Transformer Architecture[^wu2022memorizing], which adds an external memory to the standard transformer architecture. The external memory is accessed using approximate kNN lookup._
+_[Figure 2]: Overview of the Memorizing Transformer architecture[^wu2022memorizing]. The external memory (left) is updated after each training step, and it is accessed in subsequent steps using approximate kNN lookup._
 
 The approximate kNN algorithm allows the external memory to be scaled quite significantly, as there exist efficient implementations of this algorithm. Additionally, since the external memory does not participate in backpropagation, it functions as a non-learnable parameter, enabling even more efficient scaling of memory size.
 
 Thus, these memory layers incorporate both local self-attention (computed using the context window) and top-k attention (computed using the external memory). To calculate the next token, these two attention mechanisms are combined using a gating mechanism:
 $$V_a = V_m \cdot g + V_c \cdot (1-g)$$
-Here, the the gating mechanism involves a learnable scalar $g$ called the _gate_ (bounded between 0 and 1 through the sigmoid function), which determines the relative importance of each of the attention mechanisms $V_m$ (the top-k attention) and $V_c$ (the local attention) to calculate the combined result $V_a$ of both types of attention.
+Here, the the gating mechanism involves a learnable scalar $g$ called the _gate_ (bounded between 0 and 1 through the sigmoid function), which determines the relative importance of each of the attention mechanisms $`V_m`$ (the top-k attention) and $`V_c`$ (the local attention) to calculate the combined result $`V_a`$ of both types of attention.
 
 
 # Datasets
@@ -97,11 +101,7 @@ In line with the methodology of ClipCap, we will use the COCO dataset[^lin2014co
 Following the pretraining, we will employ the ActivityNet Captions dataset[^krishna2017dense] for fine-tuning. The ActivityNet Captions dataset provides a more task-specific data source explicitly designed for captioning temporally spread-out activities in videos. It contains 20k videos with 100k detailed descriptions of sequences of events within them. To the best of our knowledge, this makes it the optimal choice for our research.
 
 ## Pre-processing
-Videos are converted into image frames at a rate of 5 frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to the end of each captioned segment, treating each such segment as an independent _video clip_. We will denote the set of $C$ video clips by 
-$$\\{ c_i\\}^C_{i=1}$$
-where the amount of frames of clip $c_i$ is given by $f(c_i)$ and the total number of frames is given by 
-$$F = \sum^C_{i=1} f(c_i)$$
-The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded with the links provided in our GitHub repository[^github]. Some statistics of the dataset splits we used for training and testing are shown below:
+Videos are converted into image frames at a rate of 5 frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to the end of each captioned segment, treating each such segment as an independent _video clip_. We will denote the set of $C$ video clips by $`\{c_i\}^C_{i=1}`$ where the amount of frames of clip $`c_i`$ is given by $`f(c_i)`$ and the total number of frames is given by $`F = {\sum}_{i=1}^C f(c_i)`$. The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded with the links provided in our GitHub repository[^github]. Some statistics of the dataset splits we used for training and testing are shown below:
 
 |                 | __Train__ | __Test__ |
 |-----------------|-----------|----------|
@@ -113,13 +113,13 @@ The frames are individually embedded using the CLIP image encoder, and the capti
 ## Data loading
 Since the external memory layers of the Memorizing Transformer need to be updated sequentially, we have to process each video clip's frames one after the other. This would effectively make the batch size equal to 1, making the training process very inefficient. Instead, we parallelize the operation by processing multiple video clips at a time. An illustration of this parallel data loading process is shown in [figure 3]. In this visualization, video clips are layed out horizontally and stacked vertically, where the amount of rows correponds to the batch size $B$ and the amount of columns is the number of batching steps $S$.
 
-[figure 3]: images/dataloader_activitynet.png "Parallel data processing"
+[figure 3]: images/Dataloader_ActivityNet.png "Parallel data processing"
 ![Parallel data processing][figure 3]
-_[Figure 3]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths. The red blocks with $\varnothing$ represent padding frames._
+_[Figure 3]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths. The red blocks with $`\varnothing`$ represent padding frames._
 
 It should be noted that since the video clips may not contain the same amount of frames, the rows in the table may not stop at the same step. When a step contains less then $B$ frames, the rest is filled with padding frames. Now, the more steps we have, the longer the training time of our model will be. Thus, we want to minimize the amount of steps $S$.
 
-Mathematically speaking, each row can be seen as a _bin_, where we want to partition a list of numbers $f(c_1), \dots, f(c_C)$ into $B$ bins such that the maximum bin size is minimized. This corresponds to the multiway number parititioning problem[^graham1969bounds], which is a well-known problem in computer science[^wikipedia2023mnp]. Unfortunately, this problem is NP-complete[^garey1979computers], so we cannot find an optimal solution in polynomial time. To evaluate alternative approximation algorithms, the _approximation ratio_ can be used, which is the largest bin returned by such an algorithm divided by the largest sum in the optimal solution. In our code, we use the `prtpy` implementation[^coinor2023prtpy] of the Multifit algorithm[^coffman1978application] [^wikipedia2023multifit], which has a worst-case approximation ratio of 13/11 in the general $B$-bin case[^yue1990exact]. This implies that the amount of padding frames we add will be bounded by $\frac{13}{11} B S - F$.
+Mathematically speaking, each row can be seen as a _bin_, where we want to partition a list of numbers $`f(c_1), \dots, f(c_C)`$ into $B$ bins such that the maximum bin size is minimized. This corresponds to the multiway number parititioning problem[^graham1969bounds], which is a well-known problem in computer science[^wikipedia2023mnp]. Unfortunately, this problem is NP-complete[^garey1979computers], so we cannot find an optimal solution in polynomial time. To evaluate alternative approximation algorithms, the _approximation ratio_ can be used, which is the largest bin returned by such an algorithm divided by the largest sum in the optimal solution. In our code, we use the `prtpy` implementation[^coinor2023prtpy] of the Multifit algorithm[^coffman1978application] [^wikipedia2023multifit], which has a worst-case approximation ratio of $\frac{13}{11}$ in the general $B$-bin case[^yue1990exact]. This implies that the amount of padding frames we add will be bounded by $\frac{13}{11} B S - F$.
 
 
 # Experimental details
@@ -187,7 +187,7 @@ Additionally, using the M1 Max GPU across all training processes maintains consi
 
 [^wu2022memorizing]: Wu, Y. et al. (2022). "Memorizing Transformers". In: International Conference on Learning Representations.
 
-[^google_trans]: Kitaev, N. and Kaiser, L. (2020). "Reformer: The Efficient Transformer". From: https://ai.googleblog.com/2020/01/reformer-efficient-transformer.html.
+[^kitaev2020reformer]: Kitaev, N., Kaiser, Ł., & Levskaya, A. (2020). Reformer: The efficient transformer. arXiv preprint arXiv:2001.04451.
 
 [^sun2015human]: Sun, L. et al. (2015). "Human action recognition using factorized spatio-temporal convolutional networks". In: Proceedings of the IEEE international conference on computer vision (pp. 4597-4605).
 
@@ -206,3 +206,5 @@ Additionally, using the M1 Max GPU across all training processes maintains consi
 [^zhou2020unified]: Zhou, L. et al. (2020). "Unified vision-language pretraining for image captioning and VQA". In: Proceedings of the AAAI Conference on Artificial Intelligence (pp. 13041–13049).
 
 [^wang2021simvlm]: Wang, Z. (2021). "SimVLM: Simple Visual Language Model Pretraining with Weak Supervision".
+
+[^zhou2018dense]: Transformer-based dense captioning - Zhou, L. et al. (2018). “End-to-End Dense Video Captioning with Masked Transformer”.
