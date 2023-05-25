@@ -174,4 +174,5 @@ checkpoints/*.pt
 checkpoints/*.json
 .tmp
 *.pt
+demos/frames/*
 images/plots/data

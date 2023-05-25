@@ -3,7 +3,6 @@
 import argparse
 import logging
 import pickle
-from pathlib import Path
 
 import prtpy
 import torch
@@ -209,10 +208,8 @@ def main(args: argparse.Namespace) -> None:
         args (argparse.Namespace): The command line arguments.
     """
     # Create the dataset and dataloader.
-    clip_model_type = args.clip_model_type.replace("/", "_")
     dataset = ActivityNetDataset(
-        Path("src/data")
-        / f"activitynet_{clip_model_type}_{args.split}_{args.subset}.pkl",
+        args.dataset_path,
         args.batch_size,
         args.prefix_length,
     )
@@ -247,24 +244,10 @@ if __name__ == "__main__":
 
     # Define command line arguments.
     parser.add_argument(
-        "--split",
+        "--dataset_path",
         type=str,
-        default="train",
-        choices=("train", "validation", "test"),
-        help="The dataset split to use.",
-    )
-    parser.add_argument(
-        "--subset",
-        type=int,
-        default=300,
-        help="Number of videos to use from the split.",
-    )
-    parser.add_argument(
-        "--clip_model_type",
-        type=str,
-        default="ViT-B/32",
-        choices=("RN50", "RN101", "RN50x4", "ViT-B/32"),
-        help="The CLIP model to use.",
+        required=True,
+        help="Path to the pre-processed dataset.",
     )
     parser.add_argument(
         "--batch_size",
@@ -275,7 +258,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--prefix_length",
         type=int,
-        default=20,
+        default=10,
         help="Number of tokens to use as prefix for the caption.",
     )
     parser.add_argument(
