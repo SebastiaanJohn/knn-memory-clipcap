@@ -2,6 +2,32 @@
 
 This repository provides the code for our project, which combines kNN-Memory and ClipCap to improve long-range dependency handling. The project builds on the [ClipCap](https://github.com/rmokady/CLIP_prefix_caption) and [Memorizing Transformers](https://github.com/lucidrains/memorizing-transformers-pytorch) repositories. This work is conducted as part of the academic curriculum for the [Deep Learning 2](https://uvadl2c.github.io) course at the University of Amsterdam. You can read our comphrehensive report [here](https://github.com/SebastiaanJohn/knn-memory-clipcap/blob/main/blogpost.md).
 
+## Project Structure
+
+The project is structured as follows:
+
+```
+├── checkpoints (model checkpoints)
+├── demos (demo notebooks)
+├── images (images used in the report)
+├── logs (training logs)
+├── src (source code)
+│   ├── dataset (dataset code, including parsers)
+│   ├── evaluation (evaluation code for metrics)
+│   ├── memorizing_transformers_pytorch (Memorizing Transformers code)
+│   ├── models (model code for kNN-Memory and ClipCap)
+├── generate_captions.py (generate captions for a dataset)
+├── predict.py (predict captions for a video)
+├── train.py (train a model)
+├── validate.py (validate a model)
+├── utils.py (utility functions)
+├── environment.yml (conda environment file)
+├── requirements.txt (pip requirements file)
+├── blogpost.md (report)
+├── pyproject.toml (project file)
+└── README.md (this file)
+```
+
 ## Requirements
 
 The code is written in Python 3.10. Install the required packages using either `pip install -r requirements.txt` or by creating a conda environment with the provided `environment.yml` file using `conda env create -f environment.yml`. Activate the environment using `conda activate knn-memory-clipcap`.
