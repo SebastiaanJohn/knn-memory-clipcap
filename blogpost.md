@@ -35,7 +35,7 @@ We will first provide an overview of relevant previous work, followed by a brief
 ## Related Work
 Where image captioning is a task that has been extensively explored using various methods, video captioning has proven to be more challenging in existing research.
 
-Progress in using long short-term memory (LSTM) models for image captioning has sparked interest in their applicability to video captioning[^TODO reference here]. However, traditional LSTM models treat videos as static sequences and do not consider the selection of salient features. To address this limitation, an attention-based LSTM model was proposed[^gao2017video]. This model incorporates the attention mechanism to capture the important temporal structures of videos. However, LSTM-based models including this attention-based variant suffer from long training times. In contrast, our method leverages pre-trained models that can be frozen or fine-tuned to reduce training times.
+Progress in using long short-term memory (LSTM) models for image captioning has sparked interest in their applicability to video captioning[^gao2017video]. However, traditional LSTM models treat videos as static sequences and do not consider the selection of salient features. To address this limitation, an attention-based LSTM model was proposed[^gao2017video]. This model incorporates the attention mechanism to capture the important temporal structures of videos. However, LSTM-based models including this attention-based variant suffer from long training times. In contrast, our method leverages pre-trained models that can be frozen or fine-tuned to reduce training times.
 
 Recent advancements in Transformer-based models have also provided options for video captioning. Earlier work introduced an encoder-decoder based Transformer model for end-to-end dense video captioning[^zhou2018dense]. While this method takes advantage of the strengths of Transformer-based models, it lacks adaptability in that it can not take advantage of progress in other Transformer-based models. In contrast, our method is modular and thus allows for easy swapping of the model components when better ones emerge in the future.
 
@@ -131,6 +131,17 @@ Given the same pre-training conditions, the fine-tuning process allows us to obs
 
 Additionally, using the M1 Max GPU across all training processes maintains consistency and prevents computational discrepancies from influencing the results. By doing so, we ensure that any observed performance difference is genuinely a result of the model's structure and not due to external hardware factors.
 
+## Evaluation
+In order to evaluate our ClipMemCap model for the given video captioning task, we employed several captioning evaluation metrics. Similar to the original ClipCap paper, we validated our results using widely used evaluation metrics: BLEU[^papineni2002bleu], METEOR[^denkowski2014meteor] and ROUGE-L[^lin2004rouge]. 
+
+BLEU is an automatic machine translation evaluation metric that can replace expensive human evaluations. It compares machine-generated translations to human-generated ground truths by calculating a similarity score based on the matching n-grams between the generated and ground truth captions. For our model validation, we used an average of BLEU-1, BLEU-2, BLEU-3, and BLEU-4, which consider unigrams, bigrams, trigrams, and fourgrams, respectively.
+
+METEOR evaluates generated captions by aligning them with reference ground truths. This alignment is achieved by exhaustively identifying matches (according to different matchers; exact, stem, synonym, and paraphrase) between both captions. The alignment is then created using the largest subset of matches. The content and functions words within this alignment are identified and counted for every matcher within the matches of this type to calculate the precision and recall for the matched words. Finally, these measures are combined to compute a score that reflects the overall quality of the translation.
+
+ROUGE-L is an evaluation method that measures sentence-to-sentence similarity based on the longest common subsequence (LCS) statistics between a generated sentences and a set of reference ground truths. The underlying idea behind this metric is that higher similarity between two candidate sentences results in a longer LCS. The length of the longest LCS is then used to calculate the LCS-based F-measure, which represents the ROUGE-L score.
+
+The original ClipCap paper also utilized the CIDEr score, which quantifies the similarity based on multiple ground truth captions to assess the generalizability of the proposed model. However, since the ActivityNet Captions dataset does not provide multiple reference captions per video clip, the CIDEr metric is not applicable for our model validation.
+
 
 # Results
 <!-- Results of your work (link that part with the code in the jupyter notebook) -->
@@ -207,3 +218,11 @@ Additionally, using the M1 Max GPU across all training processes maintains consi
 [^wang2021simvlm]: Wang, Z. (2021). "SimVLM: Simple Visual Language Model Pretraining with Weak Supervision".
 
 [^zhou2018dense]: Transformer-based dense captioning - Zhou, L. et al. (2018). “End-to-End Dense Video Captioning with Masked Transformer”.
+
+[^papineni2002bleu]: Papineni, K., Roukos, S., Ward, T., & Zhu, W. J. (2002, July). "Bleu: a method for automatic evaluation of machine translation". In Proceedings of the 40th annual meeting of the Association for Computational Linguistics (pp. 311-318).
+
+[^denkowski2014meteor]: Denkowski, M., & Lavie, A. (2014, June). "Meteor universal: Language specific translation evaluation for any target language". In Proceedings of the ninth workshop on statistical machine translation (pp. 376-380).
+
+[^lin2004rouge]: Lin, C. Y., & Och, F. J. (2004, July). Automatic evaluation of machine translation quality using longest common subsequence and skip-bigram statistics. In Proceedings of the 42nd Annual Meeting of the Association for Computational Linguistics (ACL-04) (pp. 605-612).
+
+
