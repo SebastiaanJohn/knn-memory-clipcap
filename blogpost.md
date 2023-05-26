@@ -9,8 +9,7 @@
   - [Related Work](#related-work)
   - [ClipCap Summary](#clipcap-summary)
   - [Main results](#main-results)
-  - [Additional Results](#additional-results)
-  - [Ablation Studies](#ablation-studies)
+  - [Further findings](#further-findings)
 - [Exploring ClipCap's Capabilities](#exploring-clipcaps-capabilities)
   - [Strengths](#strengths)
   - [Weaknesses](#weaknesses)
@@ -40,26 +39,25 @@ Progress in using long short-term memory (LSTM) models for image captioning has 
 
 Recent advancements in Transformer-based models have also provided options for video captioning. Earlier work introduced an encoder-decoder based Transformer model for end-to-end dense video captioning[^zhou2018dense]. While this method takes advantage of the strengths of Transformer-based models, it lacks adaptability in that it can not take advantage of progress in other Transformer-based models. In contrast, our method is modular and thus allows for easy swapping of the model components when better ones emerge in the future.
 
-In the domain of multimodal vision-language modelling, alternative methods leverage pre-training with the BERT architecture[^li2020oscar] [^devlin2018bert] [^zhang2021vinvl] [^zhou2020unified] [^wang2021simvlm]. However, these methods are either limited to specific datasets[^li2020oscar] [^zhang2021vinvl] [^zhou2020unified], compromising their generalizability, or involve computationally intensive pre-training processes[^wang2021simvlm]. In contrast, the modularity of the ClipCap architecture makes it efficient to train and relatively simple to implement, positioning it as a promising alternative to these methods.
+In the domain of multimodal vision-language modelling, alternative methods leverage pre-training with the BERT architecture[^li2020oscar] [^devlin2018bert] [^zhang2021vinvl] [^zhou2020unified] [^wang2021simvlm]. However, these methods are either limited to specific datasets[^li2020oscar] [^zhang2021vinvl] [^zhou2020unified], compromising their generalizability, or involve computationally intensive pre-training processes[^wang2021simvlm]. In contrast, the modularity of the ClipCap pipeline makes it efficient to train and relatively simple to implement, positioning it as a promising alternative to these methods.
 
 ## ClipCap Summary
 The ClipCap method utilizes a pipeline of pre-trained models to generate captions for images. This pipeline consists of the CLIP[^radford2021learning] model, a mapping network, and a pre-trained language model (LM), namely GPT-2[^radford2019language] (see [figure 1]). The CLIP image encoder extracts high-level information from the visual data while the pre-trained LM generates the caption. The mapping network serves as a bridge between the two, linking the latent spaces of the two models.
 
 More specifically, for a given image, the CLIP image encoder generates an embedding containing high-level information about the image. This embedding is passed through the mapping network to obtain a so-called "prefix", a list of embeddings associated with the image content. Finally, the prefix embeddings are used as input to GPT-2, which will generate the output caption autoregressively.
 
-[figure 1]: images/ClipCap_approach_B.png "ClipCap Architecture"
-![ClipCap Architecture][figure 1]
-_[Figure 1]: Overview of the ClipCap architecture when using training procedure B. In this approach, the CLIP and GPT-2 models are kept frozen, while the mapping network is a Transformer encoder that is trained from scratch._
+[figure 1]: images/ClipCap_approach_B.png "ClipCap pipeline"
+![ClipCap pipeline][figure 1]
+_[Figure 1]: Overview of the ClipCap pipeline when using training procedure B. In this approach, the CLIP and GPT-2 models are kept frozen, while the mapping network is a Transformer encoder that is trained from scratch._
 
 ## Main results
 The authors experiment with two different training procedures for the ClipCap model pipeline. In the first approach (A), the CLIP model is kept frozen and GPT-2 is fine-tuned, while the mapping network is an MLP that is trained from scratch. In the second approach (B), the CLIP and GPT-2 models are both kept frozen, while the mapping network is a Transformer[^vaswani2017attention] encoder that is trained from scratch (see [figure 1]). The authors found that the first approach often yielded better results but required more training time. However, seeing as the accuracy decrease for approach B was relatively small, we decided to use this approach for our video captioning experiments.
 
 Both approaches were evaluated on the Conceptual Captions[^sharma2018conceptual], NoCaps[^agrewal2019nocaps], and COCO[^lin2014coco] datasets, achieving state-of-the-art performance while requiring significantly less training time and data than previous methods. Additionally, the ClipCap architecture is more straightforward and faster than earlier methods.
 
-## Additional Results
+## Further findings
 Multiple other experiments were conducted to determine when ClipCap performs well and when it does not. For example, the authors found approach A results in a much more expressive model, but that this model is more susceptible to overfitting. Additionally, an interpretability study was conducted to further understand the model's inner workings, in which the prefix embeddings were interpreted as a sequence of tokens. The authors found that the interpretation is meaningful when both the mapping network and the LM are trained (approach A) but that it becomes essentially unreadable when only the mapping network is trained (approach B). They hypothesize that this happens because in approach B, the mapping network is able to exploit intricacies of the LM that steer it towards generating the correct caption. These can intuitively be seen as "tricks" that are not interpretable to humans.
 
-## Ablation Studies
 The authors conducted multiple ablation studies to verify and motivate ClipCap's design choices. They found that the mapping network is crucial for the model to perform well and that a Transformer architecture is superior when the LM is frozen, while an MLP is more effective when the LM is additionally fine-tuned. Furthermore, the prefix length was a crucial hyperparameter; a prefix that is too short results in a lack of expressiveness, while a prefix that is too long results in a very large model that will be slow to train.
 
 
@@ -86,7 +84,7 @@ The Memorizing Transformer is an extension of the original Transformer[^vaswani2
 Specifically, each memory layer has an external memory consisting of keys and values generated by the self-attention mechanism for previous tokens. This memory can be attended to by subsequent token chunks to retrieve valuable information. Rather than employing full attention over the weighted sum of all keys and values in the memory, an approximate k-nearest neighbours (kNN) algorithm is used to attend to the memory, identifying the most relevant keys and values (the number of which is a hyperparameter). These selected keys and values are then utilized to compute the so-called _top-k attention_.
 
 [figure 2]: images/Memorizing_Transformer.png "Memorizing Transformer architecture"
-![Memorizing Transformer Architecture][figure 2]
+![Memorizing Transformer architecture][figure 2]
 _[Figure 2]: Overview of the Memorizing Transformer architecture[^wu2022memorizing]. The external memory (left) is updated after each training step, and it is accessed in subsequent steps using approximate kNN lookup._
 
 The approximate kNN algorithm allows the external memory to be scaled quite significantly, as there exist efficient implementations of this algorithm. Additionally, since the external memory does not participate in backpropagation, it functions as a non-learnable parameter, enabling even more efficient scaling of memory size.
