@@ -18,6 +18,7 @@
   - [Pre-processing](#pre-processing)
   - [Data loading](#data-loading)
 - [Experimental details](#experimental-details)
+  - [Evaluation](#evaluation)
 - [Results](#results)
 - [Conclusion \& Discussion](#conclusion--discussion)
 - [Contributions](#contributions)
@@ -26,11 +27,11 @@
 
 # Introduction
 <!-- Introduction: An analysis of the paper and its key components. Think about it as a nicely formatted review as you would see on OpenReview.net. It should contain one paragraph of related work as well. -->
-Image captioning is a multimodal task that involves generating textual descriptions of images. In our research project, we investigated a method called ClipCap[^mokady2021clipcap], which was explicitly designed for this task. One of the main advantages of ClipCap is that it is made of several building blocks that can easily be swapped out, meaning that it can be adapted to different datasets and tasks.
+Image captioning is a multimodal task that involves generating textual descriptions of images. In our research project, we investigated a method called ClipCap[^mokady2021clipcap], which was explicitly designed for this task. One of the main advantages of ClipCap is that it is made of several building blocks that can easily be swapped out, meaning that it can be adapted to different datasets and tasks. Additionally, ClipCap requires relatively little training time, since it leverages pre-trained models that can be frozen or fine-tuned.
 
-The key idea behind our research is that the original ClipCap architecture will not be good at captioning videos, since it does not remember information from previously seen input frames. We propose MemClipCap, a method that integrates a Memorizing Transformer[^wu2022memorizing] into ClipCap. By doing this, it will be able to remember information from previous frames and thus generate better captions for videos than a baseline image captioning model that does not remember information from previous frames.
+The key idea behind our research is that the original ClipCap architecture will not be good at captioning videos, since it does not remember information from previously seen input frames. We propose MemClipCap, a method that integrates a Memorizing Transformer[^wu2022memorizing] into ClipCap. By doing this, we hypothesize that it will be able to remember information from previous frames and thus generate better captions for videos than a baseline image captioning model that only looks at individual frames. A further goal is to stay true to ClipCap's design philosophy by keeping the model modular and efficient to train.
 
-We will first provide an overview of relevant previous work, followed by a brief overview of the ClipCap method and its capabilities. Then, we will discuss the strengths and weaknesses of ClipCap, which will motivate our proposed enhancement. Following this, we will discuss how we implemented this enhancement and why we made certain design decisions. Finally, we will present our results and conclude with a discussion of our findings.
+We will first provide an overview of relevant previous work, followed by a brief overview of the ClipCap method and its capabilities. Then, we will discuss the strengths and weaknesses of ClipCap, which will motivate our proposed enhancement. Following this, we will discuss how we implemented this enhancement and why we made certain design decisions. Next, we will present our results and conclusions, and finally, we will wrap up with a discussion of our findings.
 
 ## Related Work
 Where image captioning is a task that has been extensively explored using various methods, video captioning has proven to be more challenging in existing research.
@@ -132,7 +133,7 @@ Given the same pre-training conditions, the fine-tuning process allows us to obs
 Additionally, using the M1 Max GPU across all training processes maintains consistency and prevents computational discrepancies from influencing the results. By doing so, we ensure that any observed performance difference is genuinely a result of the model's structure and not due to external hardware factors.
 
 ## Evaluation
-In order to evaluate our ClipMemCap model for the given video captioning task, we employed several captioning evaluation metrics. Similar to the original ClipCap paper, we validated our results using widely used evaluation metrics: BLEU[^papineni2002bleu], METEOR[^denkowski2014meteor] and ROUGE-L[^lin2004rouge]. 
+In order to evaluate our ClipMemCap model for the given video captioning task, we employed several captioning evaluation metrics. Similar to the original ClipCap paper, we validated our results using widely used evaluation metrics: BLEU[^papineni2002bleu], METEOR[^denkowski2014meteor] and ROUGE-L[^lin2004rouge].
 
 BLEU is an automatic machine translation evaluation metric that can replace expensive human evaluations. It compares machine-generated translations to human-generated ground truths by calculating a similarity score based on the matching n-grams between the generated and ground truth captions. For our model validation, we used an average of BLEU-1, BLEU-2, BLEU-3, and BLEU-4, which consider unigrams, bigrams, trigrams, and fourgrams, respectively.
 
