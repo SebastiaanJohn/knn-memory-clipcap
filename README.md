@@ -41,9 +41,9 @@ Our experiments use the [ActivityNet Caption](https://cs.stanford.edu/people/ran
     ```bash
     cd src/data/
 
-    wget "https://drive.google.com/u/0/uc?id=19wiL2M3vMLN40QFUio0qeX0_ylraXxJv&export=download&confirm=t" -O activitynet_ViT-B_32_train_first_2000.pkl
-    wget "https://drive.google.com/u/0/uc?id=1m0Q7qzmHpTPk0qvN2aOAJ5pnU9A9HOAJ&export=download&confirm=t" -O activitynet_ViT-B_32_dev_first_250.pkl
-    wget "https://drive.google.com/u/0/uc?id=19wiL2M3vMLN40QFUio0qeX0_ylraXxJv&export=download&confirm=t" -O activitynet_ViT-B_32_validation_first_500.pkl
+    wget "https://drive.google.com/u/0/uc?id=1fhZc7yM4Xja7rixz7hBLspPsYbaEQBYm&export=download&confirm=t" -O activitynet_ViT-B_32_train_first_2000.pkl
+    wget "https://drive.google.com/u/0/uc?id=1vliDDQxoSdrl5ZaJ-9DZBBEc8cQYwztA&export=download&confirm=t" -O activitynet_ViT-B_32_dev_first_250.pkl
+    wget "https://drive.google.com/u/0/uc?id=1C2qaf3xBXwfr-LDfygnO8GK-12DCuxxn&export=download&confirm=t" -O activitynet_ViT-B_32_validation_first_500.pkl
     ```
 
     Instead of `wget`, you can also download the files manually from [here](https://drive.google.com/drive/folders/1-2Eifr-kgIzHsTiijgvItUrhtl7ePWAm). The files should be placed in the `src/data/` folder. Additionally, the pre-processed COCO dataset can be found there as well.
