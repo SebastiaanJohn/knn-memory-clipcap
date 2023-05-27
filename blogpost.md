@@ -236,7 +236,9 @@ Furthermore, when examining each of the four models individually, we observed a 
 
 # Conclusion & Discussion
 > TODO Somewhere in the discussion, we should mention the following:
-> While we only train a baseline model that uses the last frame of each video clip to caption the entire clip, we hypothesize that our enhancement would also be able to produce better captions than an image captioning model that would caption any other frame of the video clip. This is because our enhancement is able to integrate information from all frames of the video clip, while the image captioning model would only be able to use information from a single frame.
+> Aangezien ons model niet beter scoort dan de baseline, moeten we in de blogpost kunnen uitleggen waarom. Onze hypothese is dat er 2 redenen zijn:
+> 1. Er zijn veel hyperparameters (memorizing layers, num retrieved memories, batch size, learning rate etc.) die getweakt kunnen worden, maar wij hebben geen hyperparameter search kunnen uitvoeren.
+> 2. De baseline zelf is al best een goed model; omdat de clips redelijk kort zijn kun je op basis van 1 frame vaak een prima caption genereren.
 
 
 > TODO Somewhere in the discussion, we should mention the following:
