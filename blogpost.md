@@ -147,6 +147,18 @@ The original ClipCap paper also utilized the CIDEr score, which quantifies the s
 # Results
 <!-- Results of your work (link that part with the code in the jupyter notebook) -->
 
+The table below shows the 
+
+
+|                 | __ClipMemCap__ | __Baseline #1__ | __Baseline #2__ | __Baseline #3__ |
+|-----------------|----------------|-----------------|-----------------|-----------------|
+| Bleu_1          | 19.2153        | 20.8486         | 20.2418         | 21.4235         |
+| Bleu_2          | 8.0668         | 8.5534          | 8.8150          | 9.0937          |
+| Bleu_3          | 3.5685         | 3.5515          | 3.6270          | 3.8431          |
+| Bleu_4          | 1.0236         | 0.7883          | 1.2708          | 1.3604          |
+| METEOR          | 9.4595         | 9.8738          | 10.0628         | 10.2781         |
+| ROUGE_L         | 24.6301        | 24.9494         | 23.7886         | 24.6975         |
+
 
 # Conclusion & Discussion
 > TODO Somewhere in the discussion, we should mention the following:
