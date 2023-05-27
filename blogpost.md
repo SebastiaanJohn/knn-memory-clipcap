@@ -147,8 +147,7 @@ The original ClipCap paper also utilized the CIDEr score, which quantifies the s
 # Results
 <!-- Results of your work (link that part with the code in the jupyter notebook) -->
 
-The table below shows the 
-
+The table below shows the results of our ClipMemCap model compared to our three baseline models.
 
 |                 | __ClipMemCap__ | __Baseline #1__ | __Baseline #2__ | __Baseline #3__ |
 |-----------------|----------------|-----------------|-----------------|-----------------|
@@ -158,6 +157,12 @@ The table below shows the
 | Bleu_4          | 1.0236         | 0.7883          | 1.2708          | **1.3604**      |
 | METEOR          | 9.4595         | 9.8738          | 10.0628         | **10.2781**     |
 | ROUGE_L         | 24.6301        | **24.9494**     | 23.7886         | 24.6975         |
+
+The results of our study indicate that our ClipMemCap model did not demonstrate superior performance compared to the three baseline models across the evaluation metrics BLEU-1, BLEU-2, BLEU-3, BLEU-4, METEOR, and Rouge-L. These baseline models specifically consider, respectively, the first, middle, or last frame of a clip to generate captions. Additionally, the three baseline models exhibited similar performance levels.
+
+One possible explanation for these findings is that our model solely focuses on captioned clips, which are initially extracted from the ActivityNet dataset based on the premise that each clip represents a distinct action or event within a specific timeframe. Consequently, the frames within a given clip tend to be highly similar to each other, as their similarities justify their extraction as a single clip. Thus, summarizing all frames of a clip (as our ClipMemCap model does) does not enhance performance compared to the baselines that rely on a single frame. Furthermore, the similarities among frames may account for the limited differences observed between the three baseline models. In essence, since the frames are sufficiently similar, generating accurate captions can be achieved with any one frame, regardless of whether it is the first, middle, or last frame.
+
+Furthermore, when examining each of the four models individually, we observed a descending trend in the scores of the Bleu metrics, namely BLEU-1, BLEU-2, BLEU-3, and BLEU-4. These metrics evaluate the similarity of n-grams (n consecutive words) between the generated caption and the ground truth caption. As the length of these n-grams increases, the probability of finding matching sequences decreases. Consequently, matching single words (unigrams) has the highest probability, while matching longer sequences, such as 4-word sequences (4-grams), has a lower probability. Thus, BLEU-1 yields the highest score, while BLEU-4 yields the lowest score due to the higher difficulty of finding exact matches for longer sequences
 
 
 # Conclusion & Discussion
