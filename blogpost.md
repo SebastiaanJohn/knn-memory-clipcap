@@ -13,12 +13,15 @@
 - [Exploring ClipCap's Capabilities](#exploring-clipcaps-capabilities)
   - [Strengths](#strengths)
   - [Weaknesses](#weaknesses)
-- [Our contribution](#our-contribution)
-- [Datasets](#datasets)
-  - [Pre-processing](#pre-processing)
-  - [Data loading](#data-loading)
-- [Experimental details](#experimental-details)
+- [Methodology](#methodology)
+  - [Memorizing Transformer](#memorizing-transformer)
+  - [Datasets](#datasets)
+    - [Pre-processing](#pre-processing)
+    - [Data loading](#data-loading)
+- [Experiments](#experiments)
+  - [Training and evaluation procedure](#training-and-evaluation-procedure)
   - [Evaluation](#evaluation)
+  - [Conducted experiments](#conducted-experiments)
 - [Results](#results)
 - [Conclusion \& Discussion](#conclusion--discussion)
 - [Contributions](#contributions)
@@ -31,6 +34,7 @@ Image captioning is a multimodal task that involves generating textual descripti
 
 The key idea behind our research is that the original ClipCap architecture will not be good at captioning videos, since it does not remember information from previously seen input frames. We propose MemClipCap, a method that integrates a Memorizing Transformer[^wu2022memorizing] into ClipCap. By doing this, we hypothesize that it will be able to remember information from previous frames and thus generate better captions for videos than a baseline image captioning model that only looks at individual frames. A further goal is to stay true to ClipCap's design philosophy by keeping the model modular and efficient to train.
 
+<!-- TODO Change this to reflect the actual structure of the paper -->
 We will first provide an overview of relevant previous work, followed by a brief overview of the ClipCap method and its capabilities. Then, we will discuss the strengths and weaknesses of ClipCap, which will motivate our proposed enhancement. Following this, we will discuss how we implemented this enhancement and why we made certain design decisions. Next, we will present our results and conclusions, and finally, we will wrap up with a discussion of our findings.
 
 ## Related Work
@@ -76,9 +80,11 @@ Other than a dataset of image-text pairs, the model does not require any additio
 Apart from images, other visual data such as video segments naturally have long-range dependencies between individual frames. When interpreted seperately, each frame may not contain enough information to generate a meaningful caption for the whole video. However, when interpreted jointly, emergent patterns may be observed that can be used to generate a more accurate caption. The ClipCap model does not account for these long-range dependencies as the mapping network's Transformer only has a limited context window, and therefore may not be able to generate accurate captions considering entire videos.
 
 
-# Our contribution
+# Methodology
+
+## Memorizing Transformer
 <!-- Describe your novel contribution. -->
-Our research aims to explore potential performance enhancements in video captioning by integrating a Memorizing Transformer[^wu2022memorizing] into ClipCap's mapping network. The original paper applies the concept of Memorizing Transformers to language models, aiming to address the challenge of long-term dependencies within textual information. We propose that this approach can be extended to incorporate visual information in the context of video captioning, where long-range dependencies are also prevalent.
+Our research aims to explore potential performance enhancements in video captioning by integrating a Memorizing Transformer[^wu2022memorizing] into ClipCap's mapping network. The original paper applies the concept of Memorizing Transformers to language models, aiming to address the phenomenon of long-term dependencies within textual information. We propose that this approach can be extended to incorporate visual information in the context of video captioning, where long-range dependencies are also prevalent.
 
 The Memorizing Transformer is an extension of the original Transformer[^vaswani2017attention] architecture that incorporates so-called _memory layers_ (see [figure 2]). Typically, a Transformer can only take a fixed amount of tokens into account, called the _context window_, when calculating attention[^vaswani2017attention]. Increasing the size of this window is impractical, as the memory size required scales quadratically with the size of the context window[^kitaev2020reformer]. The Memorizing Transformer aims to improve upon this by adding an external memory component into the conventional self-attention mechanism.
 
@@ -94,54 +100,117 @@ Thus, these memory layers incorporate both local self-attention (computed using 
 $$V_a = V_m \cdot g + V_c \cdot (1-g)$$
 Here, the the gating mechanism involves a learnable scalar $g$ called the _gate_ (bounded between 0 and 1 through the sigmoid function), which determines the relative importance of each of the attention mechanisms $`V_m`$ (the top-k attention) and $`V_c`$ (the local attention) to calculate the combined result $`V_a`$ of both types of attention.
 
+## Datasets
+In line with the methodology of ClipCap, we use the COCO dataset[^lin2014coco] for the initial pre-training stage of our mapping network. This allows the model to learn a general understanding of the relationship between images and text.
 
-# Datasets
-In line with the methodology of ClipCap, we will use the COCO dataset[^lin2014coco] for the initial pretraining stage of our mapping network. This allows the model to learn a general understanding of the relationship between images and text.
+Following the pre-training, we will employ the ActivityNet Captions dataset[^krishna2017dense] for fine-tuning. The ActivityNet Captions dataset provides a more task-specific data source explicitly designed for captioning temporally spread-out activities in videos. It contains 20k videos with 100k detailed descriptions of sequences of events within them. To the best of our knowledge, this makes it the optimal choice for our research.
 
-Following the pretraining, we will employ the ActivityNet Captions dataset[^krishna2017dense] for fine-tuning. The ActivityNet Captions dataset provides a more task-specific data source explicitly designed for captioning temporally spread-out activities in videos. It contains 20k videos with 100k detailed descriptions of sequences of events within them. To the best of our knowledge, this makes it the optimal choice for our research.
+### Pre-processing
+Videos are converted into image frames at a rate of 5 frames per second (fps). We extract all frames from the start to the end of each captioned segment, treating each segment as an independent _video clip_. We will denote the set of video clips by $`\{c_i\}^C_{i=1}`$, where the amount of frames of clip $`c_i`$ is given by $`f(c_i)`$. The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded using the links provided in our GitHub repository[^github].
 
-## Pre-processing
-Videos are converted into image frames at a rate of 5 frames per second (fps). Since our focus is solely on captioning and not temporal action localization, we extract all frames from the start to the end of each captioned segment, treating each such segment as an independent _video clip_. We will denote the set of $C$ video clips by $`\{c_i\}^C_{i=1}`$ where the amount of frames of clip $`c_i`$ is given by $`f(c_i)`$ and the total number of frames is given by $`F = {\sum}_{i=1}^C f(c_i)`$. The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded with the links provided in our GitHub repository[^github]. Some statistics of the dataset splits we used for training and testing are shown below:
+A visualization of an ActivityNet Captions video clip is shown in [figure 3]. Each of the captions in this figure is associated with a specific time interval within the video clip. It should be noted that even though we treat the video clips as independent, they may not be, as references to previously described activities or objects may be made (e.g. "Eventually", "Another", "The woman").
 
-|                 | __Train__ | __Test__ |
-|-----------------|-----------|----------|
-| Videos          | 300       | 100      |
-| Video clips $C$ | 1112      | 371      |
-| Frames $F$      | 198020    | 69731    |
-| Length (hours)  | 275       | 97       |
+[figure 3]: images/ActivityNet_Captions.png "ActivityNet Captions video clip example"
+![ActivityNet Captions video clip example][figure 3]
+_[Figure 3]: Visualization of an ActivityNet Captions video clip[^krishna2017dense]. The video clip is shown on the left, and the corresponding caption is shown on the right._
 
-## Data loading
-Since the external memory layers of the Memorizing Transformer need to be updated sequentially, we have to process each video clip's frames one after the other. This would effectively make the batch size equal to 1, making the training process very inefficient. Instead, we parallelize the operation by processing multiple video clips at a time. An illustration of this parallel data loading process is shown in [figure 3]. In this visualization, video clips are layed out horizontally and stacked vertically, where the amount of rows correponds to the batch size $B$ and the amount of columns is the number of batching steps $S$.
+### Data loading
+Since the external memory layers of the Memorizing Transformer need to be updated sequentially, we have to process each video clip's frames one after the other. This would effectively make the batch size equal to 1, making the training process very inefficient. Instead, we parallelize the operation by processing multiple video clips at a time. An illustration of this parallel data loading process is shown in [figure 4]. In this visualization, video clips are layed out horizontally and stacked vertically, where the amount of rows correponds to the batch size $B$ and the amount of columns is the number of batching steps $S$.
 
-[figure 3]: images/Dataloader_ActivityNet.png "Parallel data processing"
-![Parallel data processing][figure 3]
-_[Figure 3]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths. The red blocks with $`\varnothing`$ represent padding frames._
+[figure 4]: images/Dataloader_ActivityNet_Captions.png "Parallel data processing"
+![Parallel data processing][figure 4]
+_[Figure 4]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths._
 
-It should be noted that since the video clips may not contain the same amount of frames, the rows in the table may not stop at the same step. When a step contains less then $B$ frames, the rest is filled with padding frames. Now, the more steps we have, the longer the training time of our model will be. Thus, we want to minimize the amount of steps $S$.
+It should be noted that since the video clips may not contain the same amount of frames, the rows in the table may not stop at the same step. When a step contains less then $B$ frames, the rest is filled with padding frames (represented in [figure 4] by red $`\varnothing`$ blocks). Note that the more steps we have, the longer the training time of our model will be. Thus, we want to minimize the amount of steps $S$.
 
-Mathematically speaking, each row can be seen as a _bin_, where we want to partition a list of numbers $`f(c_1), \dots, f(c_C)`$ into $B$ bins such that the maximum bin size is minimized. This corresponds to the multiway number parititioning problem[^graham1969bounds], which is a well-known problem in computer science[^wikipedia2023mnp]. Unfortunately, this problem is NP-complete[^garey1979computers], so we cannot find an optimal solution in polynomial time. To evaluate alternative approximation algorithms, the _approximation ratio_ can be used, which is the largest bin returned by such an algorithm divided by the largest sum in the optimal solution. In our code, we use the `prtpy` implementation[^coinor2023prtpy] of the Multifit algorithm[^coffman1978application] [^wikipedia2023multifit], which has a worst-case approximation ratio of $\frac{13}{11}$ in the general $B$-bin case[^yue1990exact]. This implies that the amount of padding frames we add will be bounded by $\frac{13}{11} B S - F$.
+Mathematically speaking, each row can be seen as a _bin_ $b$ in which we can put a set of video clips $`C^{(b)}`$. The _bin size_ is the total amount of frames that the bin contains, and is given by $`f(b) = {\sum}_{c_j \in C^{(b)}} f(c_j)`$. Now, to minimize $S$, we want to partition the video clips into $B$ bins such that the maximum bin size is minimized. Thus, we are looking for the set of bins $`\{C^{(b)}\}_{b=1}^B`$ that minimizes $`\max(f(b) \mid b \in \{1, \dots, B\})`$. This corresponds to the multiway number parititioning problem[^graham1969bounds], which is a well-known problem in computer science[^wikipedia2023mnp]. Unfortunately, this problem is NP-complete[^garey1979computers], so we cannot find an optimal solution in polynomial time. To evaluate alternative approximation algorithms, the _approximation ratio_ can be used, which is the largest bin size returned by such an algorithm divided by the largest bin size in the optimal solution. In our code, we use the `prtpy` implementation[^coinor2023prtpy] of the Multifit algorithm[^coffman1978application] [^wikipedia2023multifit], which has a worst-case approximation ratio of $\frac{13}{11}$ in the general $B$-bin case[^yue1990exact]. This implies that the extra training time of our model is at most 18.2% larger than the optimal configuration (note that this is an upper bound, since empty frames will not prolong the training time by much).
 
 
-# Experimental details
-The foundational model was initially pre-trained on the COCO dataset throughout ten epochs. This process was carried out by replicating the parameters used in ClipCap. Specifically, we utilized a batch size of 40, a prefix dimension of 512, and a prefix length of 10. The learning rate for this phase was set at 2e-5, and we implemented an AdamW optimizer to regulate the training process.
+# Experiments
 
-Following this pre-training phase, we fine-tuned the baseline and Memorizing Transformer-enhanced models. The fine-tuning was executed on the ActivityNet Captions dataset, again over ten epochs, while maintaining the same parameters as in the pre-training stage. This step ensured that the models effectively adapted to the specific requirements of the video captioning task.
+## Training and evaluation procedure
+We initially pre-trained a _base model_ on the full COCO dataset, which we use for both the baselines and our proposed model. This allows us to observe how effectively our modification performs relative to the baselines, which offers a fair and accurate comparison of both models' performance on the video captioning task. The pre-training phase was executed for 10 epochs, with a batch size of 40, a prefix embedding dimension of 512, and a prefix length of 10. We used the AdamW[^loshchilov2017decoupled] optimizer with a learning rate of 2e-5.
 
-Our model selection was guided by the validation loss, with the best-performing model based on this criterion chosen for further evaluation. The training process for all models was conducted on a single M1 Max GPU to ensure uniform computational resources.
-Given the same pre-training conditions, the fine-tuning process allows us to observe how effectively our modification performs relative to the baseline. This strategy offers a fair and accurate comparison of both models' performance on the video captioning task.
+Following this pre-training phase, we fine-tuned the base model using a subset of the ActivityNet Captions dataset, which we call the __train__ set. The fine-tuning process was executed over 10 epochs, while maintaining the same parameters as in the pre-training stage. For the Memorizing Transformer, we selected layer 4 and 5 as memory layers with 32 retrieved memories each, and set the maximum amount of kNN memories to 64000.
 
-Additionally, using the M1 Max GPU across all training processes maintains consistency and prevents computational discrepancies from influencing the results. By doing so, we ensure that any observed performance difference is genuinely a result of the model's structure and not due to external hardware factors.
+We used a __validation__ set to select the best model out of the 10 fine-tuning epochs based on the validation loss, and then evaluated the selected model on the __test__ set.
+
+Remember that as described in the [pre-processing](#pre-processing) section, it may be the case that captions reference earlier captions from the same video. To measure the magnitude of this effect, we discriminate between models that were only trained and evaluated on the initial video clip of each video, and models that were trained and evaluated on all video clips. We refer to these models as the _initial clip_ and _all clips_ models, respectively. Note that in each case, we keep the total amount of video clips constant. Please refer to [table 1](#dataset_splits) for an overview of the dataset splits.
+
+<!-- I use HTML here because default Markdown can't render multicolumn/multirow cells. Also, I wanted to align the cells inidividually, which is not possible with the standard Markdown syntax. -->
+<table id="dataset_splits">
+    <tr>
+        <th colspan=2></th>
+        <th style="text-align: center;">Videos</th>
+        <th style="text-align: center;">Video clips</th>
+        <th style="text-align: center;">Frames</th>
+        <th style="text-align: center;">Length (hh:mm:ss)</th>
+    </tr>
+    <tr>
+        <td rowspan=3 style="text-align: center;"><b>Initial clip</b></th>
+        <td style="text-align: center;"><b>Train</b></td>
+        <td style="text-align: right;">2 000</td>
+        <td style="text-align: right;">2 000</td>
+        <td style="text-align: right;">396 712</td>
+        <td style="text-align: center;">22:02:22</td>
+    </tr>
+    <tr>
+        <td style="text-align: center;"><b>Validation</b></td>
+        <td style="text-align: right;">250</td>
+        <td style="text-align: right;">250</td>
+        <td style="text-align: right;">52 954</td>
+        <td style="text-align: center;">02:56:30</td>
+    </tr>
+    <tr>
+        <td style="text-align: center;"><b>Test</b></td>
+        <td style="text-align: right;">500</td>
+        <td style="text-align: right;">500</td>
+        <td style="text-align: right;">113 500</td>
+        <td style="text-align: center;">06:18:20</td>
+    </tr>
+    <tr>
+        <td rowspan=3 style="text-align: center;"><b>All clips</b></th>
+        <td style="text-align: center;"><b>Train</b></td>
+        <td style="text-align: right;">540</td>
+        <td style="text-align: right;">2 043</td>
+        <td style="text-align: right;">364 657</td>
+        <td style="text-align: center;">20:15:31</td>
+    </tr>
+    <tr>
+        <td style="text-align: center;"><b>Validation</b></td>
+        <td style="text-align: right;">67</td>
+        <td style="text-align: right;">232</td>
+        <td style="text-align: right;">41 787</td>
+        <td style="text-align: center;">02:19:17</td>
+    </tr>
+    <tr>
+        <td style="text-align: center;"><b>Test</b></td>
+        <td style="text-align: right;">133</td>
+        <td style="text-align: right;">477</td>
+        <td style="text-align: right;">94 956</td>
+        <td style="text-align: center;">05:16:31</td>
+    </tr>
+</table>
+
+_[Table 1](#dataset_splits): ActivityNet Captions dataset splits we used for training, validation and testing._
+
+The training process for all models was conducted on a single M1 Max GPU. By keeping the hardware consistent across all training sessions, we ensure that any observed performance difference is genuinely a result of the model's structure, which allows us to compare the models' training time directly.
 
 ## Evaluation
-In order to evaluate our ClipMemCap model for the given video captioning task, we employed several captioning evaluation metrics. Similar to the original ClipCap paper, we validated our results using widely used evaluation metrics: BLEU[^papineni2002bleu], METEOR[^denkowski2014meteor] and ROUGE-L[^lin2004rouge].
+In order to evaluate our MemClipCap model for the given video captioning task, we employed several captioning evaluation metrics. Similar to the original ClipCap paper, we validated our results with the widely used evaluation metrics BLEU[^papineni2002bleu], METEOR[^denkowski2014meteor], and ROUGE-L[^lin2004rouge]. Concerning BLEU, we used the BLEU-1, BLEU-2, BLEU-3, and BLEU-4 variants, which measure the n-gram precision of the generated captions compared to the ground truth captions.
 
-BLEU is an automatic machine translation evaluation metric that can replace expensive human evaluations. It compares machine-generated translations to human-generated ground truths by calculating a similarity score based on the matching n-grams between the generated and ground truth captions. For our model validation, we used an average of BLEU-1, BLEU-2, BLEU-3, and BLEU-4, which consider unigrams, bigrams, trigrams, and fourgrams, respectively.
+The original ClipCap paper also utilized the CIDEr score, but this metric cannot be used since it requires multiple ground truth captions per video clip, which the ActivityNet Captions dataset does not provide.
 
-METEOR evaluates generated captions by aligning them with reference ground truths. This alignment is achieved by exhaustively identifying matches (according to different matchers; exact, stem, synonym, and paraphrase) between both captions. The alignment is then created using the largest subset of matches. The content and functions words within this alignment are identified and counted for every matcher within the matches of this type to calculate the precision and recall for the matched words. Finally, these measures are combined to compute a score that reflects the overall quality of the translation.
-
-ROUGE-L is an evaluation method that measures sentence-to-sentence similarity based on the longest common subsequence (LCS) statistics between a generated sentences and a set of reference ground truths. The underlying idea behind this metric is that higher similarity between two candidate sentences results in a longer LCS. The length of the longest LCS is then used to calculate the LCS-based F-measure, which represents the ROUGE-L score.
-
-The original ClipCap paper also utilized the CIDEr score, which quantifies the similarity based on multiple ground truth captions to assess the generalizability of the proposed model. However, since the ActivityNet Captions dataset does not provide multiple reference captions per video clip, the CIDEr metric is not applicable for our model validation.
+## Conducted experiments
+<!--
+TODO
+1. Main results steeds eerste clip van video
+2. baselines toevoegen
+- first, middle, last motivatie beschrijven
+- bij last is motivatie dat we kunnen kijken of het model zn memory goed gebruikt
+- andere batch size toevoegen
+-->
+TODO
 
 
 # Results
@@ -226,4 +295,4 @@ The original ClipCap paper also utilized the CIDEr score, which quantifies the s
 
 [^lin2004rouge]: Lin, C. Y., & Och, F. J. (2004, July). Automatic evaluation of machine translation quality using longest common subsequence and skip-bigram statistics. In Proceedings of the 42nd Annual Meeting of the Association for Computational Linguistics (ACL-04) (pp. 605-612).
 
-
+[^loshchilov2017decoupled]: Loshchilov, I., & Hutter, F. (2017). Decoupled weight decay regularization. arXiv preprint arXiv:1711.05101.
