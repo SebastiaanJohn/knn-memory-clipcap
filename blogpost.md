@@ -149,7 +149,7 @@ The original ClipCap paper also utilized the CIDEr score, which quantifies the s
 
 The table below shows the results of our ClipMemCap model compared to our three baseline models.
 
-|                 | __ClipMemCap__ | __Baseline #1__ <br>(first frame) | __Baseline #2__ <br>(middle frame)| __Baseline #3__ <br>(last frame) |
+|                 | __ClipMemCap__ <br> (bs 40, initial clip)| __Baseline #1__ <br>(bs 5, initial clip, first frame) | __Baseline #2__ <br>(bs 5, initial clip, middle frame)| __Baseline #3__ <br>(bs 5, initial clip, last frame) |
 |-----------------|----------------|-----------------|-----------------|-----------------|
 | BLEU_1          | 19.2153        | 20.8486         | 20.2418         | **21.4235**     |
 | BLEU_2          | 8.0668         | 8.5534          | 8.8150          | **9.0937**      |
