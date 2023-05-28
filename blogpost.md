@@ -239,14 +239,14 @@ Furthermore, when examining each of the four models individually, we observed a 
 
 
 # Conclusion & Discussion
-> TODO Somewhere in the discussion, we should mention the following:
+<!-- > TODO Somewhere in the discussion, we should mention the following:
 > Aangezien ons model niet beter scoort dan de baseline, moeten we in de blogpost kunnen uitleggen waarom. Onze hypothese is dat er 2 redenen zijn:
 > 1. Er zijn veel hyperparameters (memorizing layers, num retrieved memories, batch size, learning rate etc.) die getweakt kunnen worden, maar wij hebben geen hyperparameter search kunnen uitvoeren.
 > 2. De baseline zelf is al best een goed model; omdat de clips redelijk kort zijn kun je op basis van 1 frame vaak een prima caption genereren.
 
 
 > TODO Somewhere in the discussion, we should mention the following:
-> While we only train a model to caption videos, we hypothesize that our enhancement would also be able to generalize to other modalities such as audio files, because we integrate a general form of long-range dependency handling that is not specific to videos.
+> While we only train a model to caption videos, we hypothesize that our enhancement would also be able to generalize to other modalities such as audio files, because we integrate a general form of long-range dependency handling that is not specific to videos. -->
 
 In conclusion, our research aimed to enhance the ClipCap method specifically for video captioning by integrating a Memorizing Transformer into the existing architecture. Despite the theoretical underpinnings suggesting the utilization of long-range dependencies in video captioning, our results demonstrated that the proposed MemClipCap model did not outperform the baseline models across the chosen evaluation metrics. This may be due to the inherently high similarity between the frames within the captioned clips, causing the MemClipCap model to not substantially benefit from considering contextual information across different frames.
 
