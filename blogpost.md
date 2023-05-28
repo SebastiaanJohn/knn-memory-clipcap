@@ -18,10 +18,11 @@
   - [Datasets](#datasets)
     - [Pre-processing](#pre-processing)
     - [Data loading](#data-loading)
+  - [Training](#training)
 - [Experiments](#experiments)
   - [Training and evaluation procedure](#training-and-evaluation-procedure)
-  - [Evaluation](#evaluation)
   - [Conducted experiments](#conducted-experiments)
+  - [Evaluation](#evaluation)
 - [Results](#results)
   - [Main results](#main-results-1)
     - [Quantitative analysis](#quantitative-analysis)
@@ -67,7 +68,7 @@ The authors experiment with two different training procedures for the ClipCap mo
 Both approaches were evaluated on the Conceptual Captions[^sharma2018conceptual], NoCaps[^agrewal2019nocaps], and COCO[^lin2014coco] datasets, achieving state-of-the-art performance while requiring significantly less training time and data than previous methods. Additionally, the ClipCap architecture is more straightforward and faster than earlier methods.
 
 ## Further findings
-Multiple other experiments were conducted to determine when ClipCap performs well and when not. For example, the authors found that approach A results in a much more expressive model but that this model is more susceptible to overfitting. Additionally, an interpretability study was conducted to understand further the model's inner workings, in which the prefix embeddings were interpreted as a sequence of tokens. The authors found that the interpretation is meaningful when both the mapping network and the LM are trained (approach A) but becomes unreadable when only the mapping network is trained (approach B). They hypothesize that this happens because, in approach B, the mapping network can exploit the LM's intricacies that steer it towards generating the correct caption. These can intuitively be seen as "tricks" that are not interpretable to humans.
+Multiple other experiments were conducted to determine when ClipCap performs well and when not. For example, the authors found that approach A results in a much more expressive model but that this model is more susceptible to overfitting. Additionally, an interpretability study was conducted to further understand the model's inner workings, in which the prefix embeddings were interpreted as a sequence of tokens. The authors found that the interpretation is meaningful when both the mapping network and the LM are trained (approach A) but becomes unreadable when only the mapping network is trained (approach B). They hypothesize that this happens because, in approach B, the mapping network can exploit the LM's intricacies that steer it towards generating the correct caption. These can intuitively be seen as "tricks" that are not interpretable to humans.
 
 The authors conducted multiple ablation studies to verify and motivate ClipCap's design choices. They found that the mapping network is crucial for the model's performance and that a Transformer architecture is superior when the LM is frozen. At the same time, an MLP is more effective when the LM is additionally fine-tuned. Furthermore, the prefix length was a crucial hyperparameter; a prefix that is too short results in a lack of expressiveness, while a prefix that is too long results in an enormous model that will be slow to train.
 
@@ -131,6 +132,16 @@ It should be noted that since the video clips may not contain the same amount of
 
 Mathematically, each row can be seen as a _bin_ $b$ in which we can put a set of video clips $`C^{(b)}`$. The _bin size_ is the total amount of frames that the bin contains and is given by $`f(b) = {\sum}_{c_j \in C^{(b)}} f(c_j)`$. Now, to minimize $S$, we want to partition the video clips into $B$ bins such that the maximum bin size is minimized. Thus, we are looking for the set of bins $`\{C^{(b)}\}_{b=1}^B`$ that minimizes $`\max(f(b) \mid b \in \{1, \dots, B\})`$. This corresponds to the multiway number partitioning problem[^graham1969bounds], a well-known computer science problem[^wikipedia2023mnp]. Unfortunately, this problem is NP-complete[^garey1979computers], so we cannot find an optimal solution in polynomial time. The _approximation ratio_ can be used to evaluate alternative approximation algorithms, which is the largest bin size returned by such an algorithm divided by the largest bin size in the optimal solution. In our code, we use the `prtpy` implementation[^coinor2023prtpy] of the Multifit algorithm[^coffman1978application] [^wikipedia2023multifit], which has a worst-case approximation ratio of $\frac{13}{11}$ in the general $B$-bin case[^yue1990exact]. This implies that the extra training time of our model is at most 18.2% larger than the optimal configuration (note that this is an upper bound since empty frames will not prolong the training time by much).
 
+## Training
+Regarding model architecture, MemClipCap is simply ClipCap with a Memorizing Transformer as a mapping network. This Memorizing Transformer incorporates one or more memory layers and operates on batches of single frames instead of token sequences. Only the mapping network of MemClipCap is trained, while both the image encoder (CLIP) and the textual decoder (GPT-2) are kept frozen.
+
+The training data is loaded in batches. Each batch index corresponds to a different series of video clips; for example, in [figure 4], clips $c_1$, $c_{11}$ ... $c_{91}$ are all laid out one frame after another at index 0. Thus, each batch index requires a separate external memory at each memorizing layer, which is cleared at the start of a new video clip.
+
+The forward pass of the MemClipCap model begins with the computation of the CLIP embeddings for all frames in the batch. Each CLIP embedding is then mapped to a prefix by the Memorizing Transformer. In doing so, the self-attention mechanism of each transformer layer generates a (key, value) pair for every input. If that layer is a memorizing layer, it appends these (key, value) pairs to the corresponding external memories. The (key, value) pair generated at layer $l$ for an input at batch index $i$ is appended to the external memory $M_{l, i}$. Before appending, the top-k nearest (key, value) pairs for that input are first retrieved. This allows us to incorporate information from previous frames using the gating mechanism described earlier.
+
+The remainder of the forward pass is executed only with those frames in the batch that are the last in a video clip. This is because, during inference, a caption should only be generated once the model has seen all frames; for other frames, it is sufficient to update the external memories. During training, the forward pass continues by concatenating the prefix generated by the mapping network to the ground truth caption embedding and feeding the result to the language model. Like with ClipCap, the training objective is to predict the caption tokens conditioned on the prefix in an autoregressive fashion. A cross-entropy loss is therefore used to update the mapping network's parameters in the backward pass. Finally, during inference, beam search is used to generate a caption based on the language model outputs given the prefix for the last frame.
+
+We pre-trained MemClipCap and fine-tuned the baselines without using memory. In this process, we regarded each input image as a video clip of length 1, which meant that all memories were cleared at the end of each forward pass.
 
 # Experiments
 
@@ -202,19 +213,19 @@ _[Table 1](#table-dataset-splits): ActivityNet Captions dataset splits we used f
 
 The training process for all models was conducted on a single M1 Max GPU. By keeping the hardware consistent across all training sessions, we ensure that any observed performance difference is genuinely a result of the model's structure, which allows us to directly compare the models' training time.
 
-## Evaluation
-In order to evaluate our MemClipCap model for the given video captioning task, we employed several captioning evaluation metrics. Similar to the original ClipCap paper, we validated our results with the widely used evaluation metrics BLEU[^papineni2002bleu], METEOR[^denkowski2014meteor], and ROUGE-L[^lin2004rouge]. Concerning BLEU, we used the BLEU-1, BLEU-2, BLEU-3, and BLEU-4 variants, which measure the n-gram precision of the generated captions compared to the ground truth captions.
-
-The original ClipCap paper also utilized the CIDEr score. However, this metric cannot be used since it requires multiple ground truth captions per video clip, which the ActivityNet Captions dataset does not provide.
-
 ## Conducted experiments
-While the main results were produced by training and evaluating our models on only the first clip of each video, we also introduced three baseline models to obtain an in-depth understanding of MemClipCap's performance. The baselines generate captions by only looking at each clip's first, middle, or last frame. By comparing our proposed model with these baseline models, we can assess the effectiveness of incorporating external memory in the context of video captioning tasks.
+While the main results were produced by training and evaluating our MemClipCap model, we also introduced three baseline models to obtain an in-depth understanding of MemClipCap's performance. The baselines generate captions by only looking at each clip's first, middle, or last frame. By comparing our proposed model with these baseline models, we can assess the effectiveness of incorporating external memory in the context of video captioning tasks.
 
 The choice of first, middle, and last frames was motivated by the idea that these frames represent different stages of a given clip. Comparing these baselines provides a better understanding of MemClipCap's ability to capture relevant information across different stages of the video and whether retaining the memory of previous frames causes the model to generate more accurate captions.
 
 The "last frame" baseline in particular is useful to evaluate whether MemClipCap effectively utilizes its memory given that it can use information from the clip's earlier stages, while the "last frame" baseline cannot. This would help identify whether long-range dependencies in the MemClipCap model were actually being utilized.
 
-Additionally, for all MemClipCap models and baselines, we conducted experiments with different batch sizes, comparing the original batch size of 40 to a smaller batch size of 5. Furthermore, we also experimented with comparing the performance of the models when using only the initial clip of each video to when using all clips of each video.
+Additionally, for all MemClipCap models and baselines, we conducted ablation studies with different batch sizes, comparing the original batch size of 40 to a smaller batch size of 5. Furthermore, we also experimented with comparing the performance of the models when using only the initial clip of each video to when using all clips of each video.
+
+## Evaluation
+In order to evaluate our MemClipCap model for the given video captioning task, we employed several captioning evaluation metrics. Similar to the original ClipCap paper, we validated our results with the widely used evaluation metrics BLEU[^papineni2002bleu], METEOR[^denkowski2014meteor], and ROUGE-L[^lin2004rouge]. Concerning BLEU, we used the BLEU-1, BLEU-2, BLEU-3, and BLEU-4 variants, which measure the n-gram precision of the generated captions compared to the ground truth captions.
+
+The original ClipCap paper also utilized the CIDEr score. However, this metric cannot be used since it requires multiple ground truth captions per video clip, which the ActivityNet Captions dataset does not provide.
 
 
 # Results
@@ -313,7 +324,11 @@ In future work, we recommend conducting more in-depth hyperparameter searches to
 
 # Contributions
 <!-- Close the notebook with a description of each student's contribution. -->
-
+- Dennis Agafonov: Coding: COCO parsing, evaluation code, demo code and notebook, bugfixes.  Writing: draft version, introduction, related work, memorizing transformer, results.
+- Jelke Matthijsse: evaluation code, demo code, writing.
+- Sebastiaan Dijkstra: coding including: dataset, parsers, validation, clipcap, general improvements + bugfixes. Model training/evaluation. Writing including: datasets, experiments, results, discussion, conclusion, general grammar/spelling improvements.
+- Erik Buis:
+- Jan Bakker:
 
 # References
 
