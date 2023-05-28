@@ -49,7 +49,7 @@ The key idea behind our research is that the original ClipCap architecture will 
 
 We will first provide an overview of the relevant previous work, followed by a summary of the ClipCap method and its capabilities. Next, we will discuss the strengths and weaknesses of ClipCap, motivating our proposed enhancement, MemClipCap. We will then describe the implementation of this enhancement and the rationale behind our design choices. Following this, we will present our experimental results and discuss the conclusions drawn from these findings. Next, we will provide multiple ablation studies to further investigate the MemClipCap model's performance. Finally, we will wrap up with a comprehensive analysis of our research and its implications.
 
-[figure 1]: images/MemClipCap.png "MemClipCap model" \
+[figure 1]: images/MemClipCap.png "MemClipCap model"
 ![MemClipCap model][figure 1] \
 _[Figure 1]: Overview of the MemClipCap model._
 
@@ -334,7 +334,7 @@ The video clip set out on the right also provides interesting information. Altho
 With these two and many other videos, it is often the case that a single frame is often informatory enough to generate a solid caption. This could be a reason why the baseline models perform similarly to or even better than the MemClipCap model, as could be seen in the quantitative results. It is also important to note that the clips set out in this qualitative analysis are just two examples. From the quantitative results it follows that the third baseline model performs better than MemClipCap on average, but this qualitative analysis demonstrates what could be a possible cause for certain captions getting higher scores than others.
 
 The qualitative evaluation in [batch size](#batch-size) demonstrates that MemClipCap with batch size of 5 yields slightly better results compared to a batch size of 40. However, an analysis of the actual captions generated reveals that this improvement lacks significance. Numerous clips feature introductory credits frames, accompanied by the ground truth caption "The credits of the clip are shown." Both batch size 5 and batch size 40 generate various renditions of this caption, such as "The opening credits of the clip are shown," "The credits of the video are shown," and "The credits for the clip is shown." When these captions exactly match the ground truth, they form outliers that increase the average performance significantly. But with a minor difference in the caption this effect does not occur. In the batch size 5 model there are a few more of such outliers, compared to the batch size 40 model. Consequently, these discrepancies in the performances of bs5 and bs40 models can easily be explained by insignificant disparities in the generated captions.
-  
+
 ## Ablation studies
 
 ### Batch size
@@ -393,7 +393,7 @@ On the other hand, the [qualitative analysis](#qualitative-analysis) revealed th
 </table>
 
 _[Table 3](#table-batch-size): Results of our MemClipCap model with batch size 5 and our three baseline models with batch size 40._
-  
+
 
 ### Initial clip vs all clips
 [Table 2](#table-main-results) showed the results for the best performing models, which were obtained by training and evaluating only on the initial clip of each video. For comparison, [table 4](#table-initial-clip-vs-all-clips) also shows the results of training and evaluating on all clips in a video, while keeping the total number of clips used for training constant.
