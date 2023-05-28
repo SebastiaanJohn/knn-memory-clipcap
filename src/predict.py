@@ -2,14 +2,17 @@
 
 # Inspired from: https://github.com/escorciav/video-utils/blob/master/tools/batch_dump_frames.py
 
-import os
-
 import logging
-from tqdm import tqdm
-import subprocess
+import os
+import pickle
 import shutil
+import subprocess
 from pathlib import Path
+
+import clip
 import skimage.io as io
+import torch
+from dataset.activitynet import ActivityNetDataset
 from datasets import (
     Array2D,
     Dataset,
@@ -17,15 +20,12 @@ from datasets import (
     Sequence,
     Value,
 )
-from torch.utils.data import DataLoader
-from transformers import GPT2Tokenizer
-import torch
-import clip
-import pickle
-from PIL import Image
-
-from dataset.activitynet import ActivityNetDataset
 from evaluation.inference.inference import generate_beam
+from PIL import Image
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from transformers import GPT2Tokenizer
+
 
 def dump_frames(
     filename: str,
@@ -33,12 +33,15 @@ def dump_frames(
     filters: str = "-qscale:v 1",
 ) -> bool:
     """Dump frames of a video-file.
+
     Args:
         filename (str): full path of video-file
         output_format (Path, optional): output format for frames.
         filters (str, optional): additional filters for ffmpeg, e.g., "-vf scale=320x240".
+
+
     Returns:
-        success (bool)
+        success (bool).
     """
     cmd = f"ffmpeg -v error -i {filename} {filters} {output_format}"
 
@@ -60,12 +63,15 @@ def dump_wrapper(
     filename: str, dirname: Path, frame_format: str, filters: str, ext: str
 ):
     """Wrapper for dump_frames function.
+
     Args:
         filename (str): The filename of the video.
         dirname (Path): The directory where the frames will be dumped.
         frame_format (str): The format of the frames.
         filters (str): The filters to be applied to the video.
         ext (str): The extension of the frames.
+
+
     Returns:
         tuple[str, bool, int | None]: The filename of the video, a boolean
             indicating if the frames were dumped successfully, and the number
@@ -101,10 +107,9 @@ def dump_wrapper(
 
 def extract_frames(video_path: str) -> None:
     """Main function."""
-
     print(f"Extracting frames for video: {video_path}")
 
-    filters = f'-vf "fps=5, ' f'scale=320:240" ' f"-qscale:v 2"
+    filters = '-vf "fps=5, ' 'scale=320:240" ' "-qscale:v 2"
     video_path = Path(video_path)
     out_dir = video_path.parent / "frames"
     ext = Path("%06d.jpg").suffix
@@ -122,15 +127,15 @@ def extract_frames(video_path: str) -> None:
     else:
         print('unsuccesful...')
 
-def generate_caption(video_name, model, remove_dirs=False):  
-
+def generate_caption(video_name, model, remove_dirs=False) -> str:
+    """Generate caption for a video using the model."""
     # directory where the frames of the video are stored
     frames_dir = './frames/{}'.format(video_name[:-4])
     video_frames_dir = Path(frames_dir)
     if not video_frames_dir.exists():
-        print(f"Video has no frames saved!")
+        print("Video has no frames saved!")
         return None
-    
+
     # directory where the embeddings should be stored
     pickle_dir = './embeddings/embeddings_{}.pkl'.format(video_name)
 
@@ -151,7 +156,7 @@ def generate_caption(video_name, model, remove_dirs=False):
         with torch.no_grad():
             embedding = clip_model.encode_image(torch.cat(images, dim=0)).to(device)
             embeddings.append(embedding)
-        
+
         progress.update()
     progress.close()
 
