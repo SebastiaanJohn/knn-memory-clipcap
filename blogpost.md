@@ -10,6 +10,7 @@
   - [Related Work](#related-work)
   - [ClipCap Summary](#clipcap-summary)
   - [Main results](#main-results)
+  - [Further findings](#further-findings)
 - [Exploring ClipCap's Capabilities](#exploring-clipcaps-capabilities)
   - [Strengths](#strengths)
   - [Weaknesses](#weaknesses)
@@ -70,6 +71,11 @@ _[Figure 1]: Overview of the ClipCap pipeline when using training procedure B. I
 The authors experiment with two different training procedures for the ClipCap model pipeline. In the first approach (A), the CLIP model is kept frozen and GPT-2 is fine-tuned, while the mapping network is an MLP that is trained from scratch. In the second approach (B), the CLIP and GPT-2 models are both kept frozen, while the mapping network is a Transformer[^vaswani2017attention] encoder that is trained from scratch (see [figure 1]). The authors found that the first approach often yielded better results but required more training time. However, seeing as the accuracy decrease for approach B was relatively small, we decided to use this approach for our video captioning experiments.
 
 Both approaches were evaluated on the Conceptual Captions[^sharma2018conceptual], NoCaps[^agrewal2019nocaps], and COCO[^lin2014coco] datasets, achieving state-of-the-art performance while requiring significantly less training time and data than previous methods. Additionally, the ClipCap architecture is more straightforward and faster than earlier methods.
+
+## Further findings
+Multiple other experiments were conducted to determine when ClipCap performs well and when not. For example, the authors found that approach A results in a much more expressive model but that this model is more susceptible to overfitting. Additionally, an interpretability study was conducted to further understand the model's inner workings, in which the prefix embeddings were interpreted as a sequence of tokens. The authors found that the interpretation is meaningful when both the mapping network and the LM are trained (approach A) but becomes unreadable when only the mapping network is trained (approach B). They hypothesize that this happens because, in approach B, the mapping network can exploit the LM's intricacies that steer it towards generating the correct caption. These can intuitively be seen as "tricks" that are not interpretable to humans.
+
+The authors conducted multiple ablation studies to verify and motivate ClipCap's design choices. They found that the mapping network is crucial for the model's performance and that a Transformer architecture is superior when the LM is frozen. At the same time, an MLP is more effective when the LM is additionally fine-tuned. Furthermore, the prefix length was a crucial hyperparameter; a prefix that is too short results in a lack of expressiveness, while a prefix that is too long results in an enormous model that will be slow to train.
 
 
 # Exploring ClipCap's Capabilities
