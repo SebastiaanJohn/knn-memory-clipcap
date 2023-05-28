@@ -7,6 +7,7 @@
 
 import argparse
 import json
+import pickle
 import random
 import string
 import sys
@@ -34,16 +35,14 @@ class ANETcaptions(object):
 
     def __init__(self, ground_truth_filenames=None, prediction_filename=None,
                  max_proposals=1000,
-                 verbose=False):
+                 verbose=False, pickle_file=None):
         # Check that the gt and submission files exist and load them
-        # if len(tious) == 0:
-            # raise IOError('Please input a valid tIoU.')
         if not ground_truth_filenames:
             raise IOError('Please input a valid ground truth file.')
         if not prediction_filename:
             raise IOError('Please input a valid prediction file.')
 
-
+        self.pickle_file = pickle_file
         self.verbose = verbose
         self.max_proposals = max_proposals
         self.ground_truths = self.import_ground_truths(ground_truth_filenames)
@@ -59,9 +58,10 @@ class ANETcaptions(object):
                 (Meteor(),"METEOR"),
                 (Rouge(), "ROUGE_L"),
                 # (Cider(), "CIDEr")
+                # (Spice(), "SPICE")
             ]
         else:
-            print('PAS OP! Verbose staat uit!!')
+            print('Watch out, verbose is off (only METEOR will be done)!!')
             self.scorers = [(Meteor(), "METEOR")]
 
     def import_prediction(self, prediction_filename):
@@ -85,33 +85,42 @@ class ANETcaptions(object):
 
     def get_gt_vid_ids(self):
         # make list of video ids
-        vid_ids = set([])
-        vid_ids |= set(self.ground_truths.keys())
-        return list(vid_ids)
+        return list(self.ground_truths.keys())
+
+    def num_frames(self):
+        # get number of frames per clip
+        prepr_dataset_path = self.pickle_file
+        with open(prepr_dataset_path, "rb") as f:
+            prepr_dataset = pickle.load(f)
+
+        n_frames = []
+        for video_clip in prepr_dataset:
+            n_frames.append(video_clip["frames"].shape[0])
+
+        return n_frames
+
 
     def evaluate(self):
-        self.scores = {}
-        self.scores = self.evaluate2()
 
+        n_frames = self.num_frames()
 
-    def evaluate2(self):
 
         # define dictionary for predictions and ground truths and
         res = {}
         gts = {}
         gt_vid_ids = self.get_gt_vid_ids()
 
+        print(len(n_frames))
+        print(len(gt_vid_ids))
+
         unique_index = 0
+
 
         # video id to unique caption ids mapping
         # this one does keep track of the video ids, and which caption ids belong to which video!!
         vid2capid = {}
 
-        # these are gonna be the predictions and gts dict
-        # this is a dict where values are caption ids (start from counting of 0)
-        # note: this thus does not have the video id anymore (it is disregarded here)!
-        # note 2: this is probably overkill rn, since we have only one caption per id rn, but it doesnt kill
-        # to keep it like this and changing it is too much trouble (can we do later on if necessary/wanted)
+        # these are gonna be the predictions and gts dicts
         cur_res = {}
         cur_gts = {}
 
@@ -139,16 +148,24 @@ class ANETcaptions(object):
 
 
         # Each scorer will compute across all videos and take average score
-        output = {}
+        self.scores = {}
 
-        # ACTUALLY COMPUTING THE SCORES!!! (finally)
+        self.dct_scores_len = {}
+
+        # we start computing the scores
         for scorer, method in self.scorers:
+
+            score_blue1 = []
+            score_blue2 = []
+            score_blue3 = []
+            score_blue4 = []
+            scores_len = []
 
             # do all score metrics if verbose is true
             if self.verbose:
                 print('computing %s score...'% scorer.method())
 
-            # For each video compute the score
+            # for each video compute the score
             all_scores = {}
 
             # first put data through tokenizer
@@ -165,49 +182,64 @@ class ANETcaptions(object):
             # loop through all videos
             for vid_id in gt_vid_ids:
 
-                # if there are 0 predicting captions or 0 ground truth captions, return a score of 0
+                # if there are 0 predicting captions or 0 ground truth captions,skip
                 if len(res[vid_id]) == 0 or len(gts[vid_id]) == 0:
                     empty_count += 1
                     continue
+
                 # compute the scores of all metrics for a given video
                 else:
-                    # print('\n')
-                    # print('Ground truths: ', gts[vid_id])
-                    # print('\n')
-                    # print('Predictions: ', res[vid_id])
-                    # print('\n')
+                    num_frames_vid = n_frames[int(vid_id)]
                     score, scores = scorer.compute_score(gts[vid_id], res[vid_id])
-                    # print("The scores are: ", scores)
+
                 all_scores[vid_id] = score
+
+                if scorer.method() == 'Bleu':
+                    score_blue1.append((num_frames_vid, 100 * score[0]))
+                    score_blue2.append((num_frames_vid, 100 * score[1]))
+                    score_blue3.append((num_frames_vid, 100 * score[2]))
+                    score_blue4.append((num_frames_vid, 100 * score[3]))
+
+                else:
+                    scores_len.append((num_frames_vid, 100 * score))
 
             print("The number of videos that do not have a score (these are not considered in the scoring): ", empty_count)
             print("The number of videos that DO have a score: ", len(gt_vid_ids) - empty_count)
             print("\n")
 
             if type(method) == list:
-                # als de gereturnde score een lijst is (volgens mij is dat alleen bij BLUE zo), dan bereken
-                # je daarvan het gemiddelde en maak je al die (4) scores het gemiddelde en geef dat als output
+                # calculate average score for bleu metrics
                 scores = np.mean(list(all_scores.values()), axis=0)
                 for m in range(len(method)):
-                    output[method[m]] = scores[m]
+                    self.scores[method[m]] = scores[m]
                     if self.verbose:
-                        print("scores: %s: %0.3f" % (method[m], output[method[m]]))
+                        print("scores: %s: %0.3f" % (method[m], self.scores[method[m]]))
             else:
-                output[method] = np.mean(list(all_scores.values()))
+                self.scores[method] = np.mean(list(all_scores.values()))
                 if self.verbose:
-                    print("Scores: %s: %0.3f" % (method, output[method]))
+                    print("Scores: %s: %0.3f" % (method, self.scores[method]))
             print('-' * 80)
-        return output
+
+            if scorer.method() == 'Bleu':
+                self.dct_scores_len['Bleu_1'] = score_blue1
+                self.dct_scores_len['Bleu_2'] = score_blue2
+                self.dct_scores_len['Bleu_3'] = score_blue3
+                self.dct_scores_len['Bleu_4'] = score_blue4
+            else:
+                self.dct_scores_len[scorer.method()] = scores_len
+
+        print(self.dct_scores_len.keys())
+        print(len(self.dct_scores_len['Rouge']))
 
 
-    # -------- tiou prediction fucntion ended --------
 
 def main(args):
     # Call coco eval
     evaluator = ANETcaptions(ground_truth_filenames=args.references,
                              prediction_filename=args.submission,
                              max_proposals=args.max_proposals_per_video,
-                             verbose=args.verbose)
+                             verbose=args.verbose,
+                             pickle_file=args.data)
     evaluator.evaluate()
 
 
@@ -219,17 +251,18 @@ def main(args):
     for metric in evaluator.scores:
         score = evaluator.scores[metric]
         print('| %s: %2.4f'%(metric, 100 * score))
+    print('-' * 80)
+    # print(evaluator.dct_scores_len)
+
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Evaluate the results stored in a submissions file.')
-    parser.add_argument('-s', '--submission', type=str,  default='data/memory_captions.json',
+    parser.add_argument('-s', '--submission', type=str,  default='organized_data/no_memory_captions_allc_bs5_lastf.json',
                         help='sample submission file for ActivityNet Captions Challenge.')
-    # parser.add_argument('-r', '--references', type=str, default='data/val_1.json',
-    #                     help='reference files with ground truth captions to compare results against. delimited (,) str')
-    parser.add_argument('-r', '--references', type=str, default='data/memory_references.json',
+    parser.add_argument('-r', '--references', type=str, default='organized_data/no_memory_references_allc_bs5_lastf.json',
                         help='reference files with ground truth captions to compare results against. delimited (,) str')
-    # parser.add_argument('--tious', type=float,  nargs='+', default=[0.3, 0.5, 0.7, 0.9],
-    #                     help='Choose the tIoUs to average over.')
+    parser.add_argument('-d', '--data', type=str, default="../data/activitynet_ViT-B_32_validation_first_500.pkl",
+                        help='pickle file from test data for dataloader')
     parser.add_argument('-ppv', '--max-proposals-per-video', type=int, default=1000,
                         help='maximum propoasls per video.')
     parser.add_argument('-v', '--verbose', action='store_true', default=True,
