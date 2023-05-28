@@ -1,7 +1,7 @@
 <!-- omit from toc -->
 # MemClipCap: Enhancing ClipCap with long-range dependency handling for video captioning
 > Authors: Sebastiaan Dijkstra, Erik Buis, Jan Bakker, Jelke Matthijsse, Dennis Agafonov \
-> Date: 29-5-2023 \
+> Date: 28-5-2023 \
 > Deep Learning 2 \
 > University of Amsterdam
 
@@ -221,9 +221,9 @@ Additionally, we conducted experiments with different batch sizes, comparing the
 # Results & Discussion
 <!-- Results of your work (link that part with the code in the jupyter notebook) -->
 
-The table below shows the results of our ClipMemCap model compared to our three baseline models.
+The table below shows the results of our MemClipCap model compared to our three baseline models.
 
-|                 | __ClipMemCap__ <br> (bs 40, initial clip)| __Baseline #1__ <br>(bs 5, initial clip, first frame) | __Baseline #2__ <br>(bs 5, initial clip, middle frame)| __Baseline #3__ <br>(bs 5, initial clip, last frame) |
+|                 | __MemClipCap__ <br> (bs 40, initial clip)| __Baseline #1__ <br>(bs 5, initial clip, first frame) | __Baseline #2__ <br>(bs 5, initial clip, middle frame)| __Baseline #3__ <br>(bs 5, initial clip, last frame) |
 |-----------------|----------------|-----------------|-----------------|-----------------|
 | BLEU_1          | 19.2153        | 20.8486         | 20.2418         | **21.4235**     |
 | BLEU_2          | 8.0668         | 8.5534          | 8.8150          | **9.0937**      |
