@@ -27,11 +27,11 @@
 - [Results](#results)
   - [Main results](#main-results-1)
     - [Quantitative analysis](#quantitative-analysis)
+      - [Effect of clip length on performance](#effect-of-clip-length-on-performance)
     - [Qualitative analysis](#qualitative-analysis)
   - [Ablation studies](#ablation-studies)
     - [Batch size](#batch-size)
     - [Initial clip vs all clips](#initial-clip-vs-all-clips)
-    - [Effect of clip length on performance](#effect-of-clip-length-on-performance)
 - [Conclusion](#conclusion)
 - [Contributions](#contributions)
 - [References](#references)
@@ -298,6 +298,23 @@ One possible explanation for these findings is that each clip in the ActivityNet
 
 One more interesting finding is that the baseline model's performance was generally ordered as last frame > middle frame > first frame. This suggests that the last frame of a clip may contain more information or be more representative than the first frame. However, as stated earlier, the similarity among frames is high, which may explain the limited differences observed between the three baseline models. Since the frames are sufficiently similar, generating accurate captions can be achieved with any frame, regardless of its position within the clip.
 
+
+#### Effect of clip length on performance
+One intriguing area we wished to explore was the effect of clip length on the performance of our models. To this end, we plotted the performance of each of the best models against the clip lengths. [Figure 5] shows these results for MemClipCap and the three baseline models.
+
+Upon closer examination, it appears that MemClipCap and the middle frame baseline perform better as the number of frames in a clip increases. On the other hand, the last frame baseline demonstrates better performance on short clips while performing increasingly worse on longer ones. This trend indicates that MemClipCap is actually remembering content from previous frames and that not only the last frame is taken into account.
+
+However, the majority of video clips in our test set consist of a small number of frames, as illustrated by the histogram in [figure 6]. This clearly shows that the test results are biased towards the performance of models on shorter clips. As a result, even though MemClipCap's performance on a wide range of clip lengths appears to be relatively robust, its overall score is lower when compared to the last frame baseline, even though this baseline is only slightly better on short clips.
+
+[figure 5]: images/plots/nframes_vs_metrics.png "Clip length vs. performance for all best models"
+![Clip length vs. performance for all best models][figure 5] \
+_[Figure 5]: Performance of our best MemClipCap and baseline models on the test set as a function of the number of frames in the clip. A window size of 25 frames was used to smooth the curves._
+
+[figure 6]: images/plots/Initial_clip_nframes_frequency.png "Clip length histogram"
+![Clip length histogram][figure 6] \
+_[Figure 6]: Histogram of the clip length (number of frames) when using the initial clip of each video._
+
+
 ### Qualitative analysis
 TODO
 
@@ -409,31 +426,7 @@ _[Table 3](#table-batch-size): Results of our MemClipCap model with batch size 5
 
 _[Table 4](#table-initial-clip-vs-all-clips): Results of our best MemClipCap model compared to our best three baseline models, when trained on all clips of each video instead of just the initial clip. The best model for each metric is shown in __bold italics__._
 
-Comparing both tables reveals that the _initial clip_ models consistently outperform the _all clips_ models on all metrics. We identify two possible reasons which may both be true. First, our model treats all clips as independent, while the ground truth captions in the data may reference earlier captions from the same video. This effect was shown in [figure 3]. Second, as the total number of clips is kept constant, having multiple clips coming from the same video reduces the amount of diversity in the training data. Therefore, when constrained to a maximum number of clips for training, it is more efficient to use only one clip per video.
-
-=======
-### Effect of clip length on performance
-TODO
-
-[figure 5]: images/plots/MemClipCap_(bs_40,_initial_clip)_nframes_vs_metric_window_size_25.png "Clip length vs. performance for MemClipCap"
-![Clip length vs. performance for MemClipCap][figure 5] \
-_[Figure 5]: Performance of our best MemClipCap model on the test set as a function of the number of frames in the clip. A window size of 25 frames was used to smooth the curves._
-
-[figure 6]: images/plots/Baseline_1_(first_frame,_bs_5,_initial_clip)_nframes_vs_metric_window_size_25.png "Clip length vs. performance for Baseline #1"
-![Clip length vs. performance for Baseline #1][figure 6] \
-_[Figure 6]: Performance of our best Baseline #1 model on the test set as a function of the number of frames in the clip. A window size of 25 frames was used to smooth the curves._
-
-[figure 7]: images/plots/Baseline_2_(middle_frame,_bs_5,_initial_clip)_nframes_vs_metric_window_size_25.png "Clip length vs. performance for Baseline #2"
-![Clip length vs. performance for Baseline #2][figure 7] \
-_[Figure 7]: Performance of our best Baseline #2 model on the test set as a function of the number of frames in the clip. A window size of 25 frames was used to smooth the curves._
-
-[figure 8]: images/plots/Baseline_3_(last_frame,_bs_5,_initial_clip)_nframes_vs_metric_window_size_25.png "Clip length vs. performance for Baseline #3"
-![Clip length vs. performance for Baseline #3][figure 8] \
-_[Figure 8]: Performance of our best Baseline #3 model on the test set as a function of the number of frames in the clip. A window size of 25 frames was used to smooth the curves._
-
-[figure 9]: images/plots/Initial_clip_nframes_frequency.png "Clip length histogram"
-![Clip length histogram][figure 9] \
-_[Figure 9]: Histogram of the clip length (number of frames) when using the initial clip of each video._
+Comparing both tables reveals that the _initial clip_ models consistently outperform the _all clips_ models on all metrics. We identify two possible reasons for this. First, as mentioned in the [pre-processing](#pre-processing) section, our model treats all clips as independent, while the ground truth captions in the data may reference earlier captions from the same video. This effect was shown in [figure 3]. Second, as the total number of clips is kept constant, having multiple clips coming from the same video reduces the amount of diversity in the training data. Therefore, when constrained to a maximum number of clips for training, it is more efficient to use only one clip per video.
 
 
 # Conclusion
