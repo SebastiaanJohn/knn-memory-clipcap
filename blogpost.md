@@ -147,6 +147,7 @@ The remainder of the forward pass is executed only with those frames in the batc
 
 We pre-trained MemClipCap and fine-tuned the baselines without using memory. In this process, we regarded each input image as a video clip of length 1, which meant that all memories were cleared at the end of each forward pass.
 
+
 # Experiments
 
 ## Training and evaluation procedure
@@ -251,7 +252,7 @@ The original ClipCap paper also utilized the CIDEr score. However, this metric c
     <th style="text-align: center;">ROUGE-L</th>
   </tr>
   <tr>
-    <td style="text-align: center;"><strong>MemClipCap</strong><br>(bs 40, initial clip)</td>
+    <td style="text-align: center;"><b>MemClipCap</b><br>(bs 40, initial clip)</td>
     <td>19.2153</td>
     <td>8.0668</td>
     <td>3.5685</td>
@@ -260,16 +261,16 @@ The original ClipCap paper also utilized the CIDEr score. However, this metric c
     <td>24.6301</td>
   </tr>
   <tr>
-    <td style="text-align: center;"><strong>Baseline #1</strong><br>(first frame, bs 5, initial clip)</td>
+    <td style="text-align: center;"><b>Baseline #1</b><br>(first frame, bs 5, initial clip)</td>
     <td>20.8486</td>
     <td>8.5534</td>
     <td>3.5515</td>
     <td>0.7883</td>
     <td>9.8738</td>
-    <td><strong>24.9494</strong></td>
+    <td><b>24.9494</b></td>
   </tr>
   <tr>
-    <td style="text-align: center;"><strong>Baseline #2</strong><br>(middle frame, bs 5, initial clip)</td>
+    <td style="text-align: center;"><b>Baseline #2</b><br>(middle frame, bs 5, initial clip)</td>
     <td>20.2418</td>
     <td>8.8150</td>
     <td>3.6270</td>
@@ -278,12 +279,12 @@ The original ClipCap paper also utilized the CIDEr score. However, this metric c
     <td>23.7886</td>
   </tr>
   <tr>
-    <td style="text-align: center;"><strong>Baseline #3</strong><br>(last frame, bs 5, initial clip)</td>
-    <td><strong>21.4235</strong></td>
-    <td><strong>9.0937</strong></td>
-    <td><strong>3.8431</strong></td>
-    <td><strong>1.3604</strong></td>
-    <td><strong>10.2781</strong></td>
+    <td style="text-align: center;"><b>Baseline #3</b><br>(last frame, bs 5, initial clip)</td>
+    <td><b>21.4235</b></td>
+    <td><b>9.0937</b></td>
+    <td><b>3.8431</b></td>
+    <td><b>1.3604</b></td>
+    <td><b>10.2781</b></td>
     <td>24.6975</td>
   </tr>
 </table>
@@ -306,6 +307,56 @@ TODO
 
 ### Initial clip vs all clips
 TODO
+
+<table id="table-initial-clip-vs-all-clips">
+  <tr>
+    <th></th>
+    <th style="text-align: center;">BLEU-1</th>
+    <th style="text-align: center;">BLEU-2</th>
+    <th style="text-align: center;">BLEU-3</th>
+    <th style="text-align: center;">BLEU-4</th>
+    <th style="text-align: center;">METEOR</th>
+    <th style="text-align: center;">ROUGE-L</th>
+  </tr>
+  <tr>
+    <td style="text-align: center;"><b>MemClipCap</b><br>(bs 40, all clips)</td>
+    <td><b>14.4053</b></td>
+    <td>4.0560</td>
+    <td>1.1455</td>
+    <td>0.1057</td>
+    <td>6.9259</td>
+    <td><b>17.0485</b></td>
+  </tr>
+  <tr>
+    <td style="text-align: center;"><b>Baseline #1</b><br>(first frame, bs 5, all clips)</td>
+    <td>13.8661</td>
+    <td><b>4.2128</b></td>
+    <td>1.1045</td>
+    <td><b>0.2402</b></td>
+    <td>6.9834</td>
+    <td>16.3011</td>
+  </tr>
+  <tr>
+    <td style="text-align: center;"><b>Baseline #2</b><br>(middle frame, bs 5, all clips)</td>
+    <td>12.7060</td>
+    <td>3.3036</td>
+    <td>1.0532</td>
+    <td>0.1370</td>
+    <td>6.9234</td>
+    <td>15.5418</td>
+  </tr>
+  <tr>
+    <td style="text-align: center;"><b>Baseline #3</b><br>(last frame, bs 5, all clips)</td>
+    <td>12.7000</td>
+    <td>3.7467</td>
+    <td><b>1.1650</b></td>
+    <td>0.2127</td>
+    <td><b>7.1890</b></td>
+    <td>15.0981</td>
+  </tr>
+</table>
+
+_[Table 4](#table-initial-clip-vs-all-clips): Results of our best MemClipCap model compared to our best three baseline models, when trained on all clips of each video instead of just the initial clip. The best model for each metric is shown in bold. If a model performed better than its respective variant for using only the initial clip (see [table 2](#table-main-results)), the metric is underlined._
 
 
 # Conclusion
