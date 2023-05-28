@@ -5,6 +5,7 @@
 > Deep Learning 2 \
 > University of Amsterdam
 
+- [Abstract](#abstract)
 - [Introduction](#introduction)
   - [Related Work](#related-work)
   - [ClipCap Summary](#clipcap-summary)
@@ -34,6 +35,9 @@
 - [Contributions](#contributions)
 - [References](#references)
 
+# Abstract
+
+We explore the potential of enhancing the ClipCap method for video captioning by integrating a Memorizing Transformer into the architecture, resulting in a MemClipCap model. The goal is to capture long-range dependencies between frames, which could help generate better captions for video segments. We use the COCO dataset for pre-training and the ActivityNet Captions dataset for fine-tuning. The performance of the proposed MemClipCap model is then compared to three baseline models that generate captions based on the video's first, middle, or last frame. While the MemClipCap model demonstrates flexibility in handling videos of various lengths, our results show that it does not outperform the baseline models across the chosen evaluation metrics. We provide recommendations for future work, including more in-depth hyperparameter searches and exploration of other modalities, to further investigate the potential of the MemClipCap model.
 
 # Introduction
 <!-- Introduction: An analysis of the paper and its key components. Think about it as a nicely formatted review as you would see on OpenReview.net. It should contain one paragraph of related work as well. -->
@@ -320,7 +324,6 @@ One advantage of our MemClipCap model is its ability to work with videos of arbi
 Our model's performance might improve with hyperparameter search, as various hyperparameters could be further tuned for optimal results. However, we could not perform extensive hyperparameter optimization due to resource constraints.
 
 In future work, we recommend conducting more in-depth hyperparameter searches to identify the optimal combination and further investigating the generalizability of the MemClipCap model to other modalities. An exploration of utilizing multiple modalities simultaneously, like combining audio and visual data, could also be a valuable extension of the current research. Additionally, it would be interesting to examine the effectiveness of the MemClipCap model when applied to longer videos, where the disparity between earlier and later frames is more pronounced, potentially allowing our model to capitalize on the long-range dependencies and enhance its captioning performance.
-
 
 # Contributions
 <!-- Close the notebook with a description of each student's contribution. -->
