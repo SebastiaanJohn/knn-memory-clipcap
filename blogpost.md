@@ -257,7 +257,8 @@ In future work, we recommend conducting more in-depth hyperparameter searches to
 
 # Contributions
 <!-- Close the notebook with a description of each student's contribution. -->
-
+Dennis Agafonov: evaluation code, demo code and notebook, writing.
+Jelke Matthijsse: evaluation code, demo code, writing.
 
 # References
 
