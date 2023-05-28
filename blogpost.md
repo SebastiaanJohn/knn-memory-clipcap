@@ -318,12 +318,12 @@ TODO
   </tr>
   <tr>
     <td style="text-align: center;"><b>MemClipCap</b><br>(bs 5, all clips)</td>
-    <td><b>19.5892</b></td>
-    <td><b>8.2377</b></td>
-    <td><b>4.3551</b></td>
-    <td><b>1.5735</b></td>
-    <td><b>9.5871</b></td>
-    <td><b>25.1340</b></td>
+    <td>19.5892</td>
+    <td>8.2377</td>
+    <td>4.3551</td>
+    <td>1.5735</td>
+    <td>9.5871</td>
+    <td>25.1340</td>
   </tr>
   <tr>
     <td style="text-align: center;"><b>Baseline #1</b><br>(first frame, bs 40, all clips)</td>
@@ -354,7 +354,7 @@ TODO
   </tr>
 </table>
 
-_[Table 3](#table-batch-size): Results of our MemClipCap model with batch size 5 and our three baseline models with batch size 40. The best model for each metric is shown in __bold italics__._
+_[Table 3](#table-batch-size): Results of our MemClipCap model with batch size 5 and our three baseline models with batch size 40._
 
 ### Initial clip vs all clips
 [Table 2](#table-main-results) showed the results for the best performing models, which were obtained by training and evaluating only on the initial clip of each video. For comparison, [table 4](#table-initial-clip-vs-all-clips) also shows the results of training and evaluating on all clips in a video, while keeping the total number of clips used for training constant.
