@@ -45,9 +45,14 @@ This study aims to enhance the ClipCap method for video captioning tasks by inco
 <!-- Introduction: An analysis of the paper and its key components. Think about it as a nicely formatted review as you would see on OpenReview.net. It should contain one paragraph of related work as well. -->
 Image captioning is a multimodal task that involves generating textual descriptions of images. In our research project, we investigated a method called ClipCap[^mokady2021clipcap], which was explicitly designed for this task. One of the main advantages of ClipCap is that it is made of several building blocks that can easily be swapped out, meaning that it can be adapted to different datasets and tasks. Additionally, ClipCap requires relatively little training time since it leverages pre-trained models that can be frozen or fine-tuned.
 
-The key idea behind our research is that the original ClipCap architecture will not be good at captioning videos since it does not remember information from previously seen input frames. We propose MemClipCap, a method that integrates a Memorizing Transformer[^wu2022memorizing] into ClipCap. By doing this, we hypothesize that it will be able to remember information from previous frames and thus generate better captions for videos than a baseline image captioning model that only looks at individual frames. A further goal is to stay true to ClipCap's design philosophy by keeping the model modular and efficient to train.
+The key idea behind our research is that the original ClipCap architecture will not be good at captioning videos since it does not remember information from previously seen input frames. We propose MemClipCap, a method that integrates a Memorizing Transformer[^wu2022memorizing] into ClipCap. Our method is illustrated in [figure 1]. By doing this, we hypothesize that it will be able to remember information from previous frames and thus generate better captions for videos than a baseline image captioning model that only looks at individual frames. A further goal is to stay true to ClipCap's design philosophy by keeping the model modular and efficient to train.
 
 We will first provide an overview of the relevant previous work, followed by a summary of the ClipCap method and its capabilities. Next, we will discuss the strengths and weaknesses of ClipCap, motivating our proposed enhancement, MemClipCap. We will then describe the implementation of this enhancement and the rationale behind our design choices. Following this, we will present our experimental results and discuss the conclusions drawn from these findings. Next, we will provide multiple ablation studies to further investigate the MemClipCap model's performance. Finally, we will wrap up with a comprehensive analysis of our research and its implications.
+
+[figure 1]: images/MemClipCap.png "MemClipCap model" \
+![MemClipCap model][figure 1] \
+_[Figure 1]: Overview of the MemClipCap model._
+
 
 ## Related Work
 Where image captioning is a task that has been extensively explored using various methods, video captioning has proven to be more challenging in existing research.
@@ -59,16 +64,16 @@ Recent advancements in Transformer-based models have also provided options for v
 In the domain of multimodal vision-language modelling, alternative methods leverage pre-training with the BERT architecture[^li2020oscar] [^devlin2018bert] [^zhang2021vinvl] [^zhou2020unified] [^wang2021simvlm]. However, these methods are either limited to specific datasets[^li2020oscar] [^zhang2021vinvl] [^zhou2020unified], compromising their generalizability, or involve computationally intensive pre-training processes[^wang2021simvlm]. In contrast, the modularity of the ClipCap pipeline makes it efficient to train and relatively simple to implement, positioning it as a promising alternative to these methods.
 
 ## ClipCap Summary
-The ClipCap method utilizes a pipeline of pre-trained models to generate captions for images. This pipeline consists of the CLIP[^radford2021learning] model, a mapping network, and a pre-trained language model (LM), namely GPT-2[^radford2019language] (see [figure 1]). The CLIP image encoder extracts high-level information from the visual data while the pre-trained LM generates the caption. The mapping network bridges the two, linking the latent spaces of the two models.
+The ClipCap method utilizes a pipeline of pre-trained models to generate captions for images. This pipeline consists of the CLIP[^radford2021learning] model, a mapping network, and a pre-trained language model (LM), namely GPT-2[^radford2019language] (see [figure 2]). The CLIP image encoder extracts high-level information from the visual data while the pre-trained LM generates the caption. The mapping network bridges the two, linking the latent spaces of the two models.
 
 More specifically, for a given image, the CLIP image encoder generates an embedding containing high-level information about the image. This embedding is passed through the mapping network to obtain a so-called "prefix", a list of embeddings associated with the image content. Finally, the prefix embeddings are used as input to GPT-2, which will generate the output caption autoregressively.
 
-[figure 1]: images/ClipCap_approach_B.png "ClipCap pipeline"
-![ClipCap pipeline][figure 1] \
-_[Figure 1]: Overview of the ClipCap pipeline when using training procedure B. In this approach, the CLIP and GPT-2 models are kept frozen, while the mapping network is a Transformer encoder that is trained from scratch._
+[figure 2]: images/ClipCap_approach_B.png "ClipCap pipeline"
+![ClipCap pipeline][figure 2] \
+_[Figure 2]: Overview of the ClipCap pipeline when using training procedure B. In this approach, the CLIP and GPT-2 models are kept frozen, while the mapping network is a Transformer encoder that is trained from scratch._
 
 ## Main results
-The authors experiment with two different training procedures for the ClipCap model pipeline. In the first approach (A), the CLIP model is kept frozen and GPT-2 is fine-tuned, while the mapping network is an MLP that is trained from scratch. In the second approach (B), the CLIP and GPT-2 models are both kept frozen, while the mapping network is a Transformer[^vaswani2017attention] encoder that is trained from scratch (see [figure 1]). The authors found that the first approach often yielded better results but required more training time. However, seeing as the accuracy decrease for approach B was relatively small, we decided to use this approach for our video captioning experiments.
+The authors experiment with two different training procedures for the ClipCap model pipeline. In the first approach (A), the CLIP model is kept frozen and GPT-2 is fine-tuned, while the mapping network is an MLP that is trained from scratch. In the second approach (B), the CLIP and GPT-2 models are both kept frozen, while the mapping network is a Transformer[^vaswani2017attention] encoder that is trained from scratch (see [figure 2]). The authors found that the first approach often yielded better results but required more training time. However, seeing as the accuracy decrease for approach B was relatively small, we decided to use this approach for our video captioning experiments.
 
 Both approaches were evaluated on the Conceptual Captions[^sharma2018conceptual], NoCaps[^agrewal2019nocaps], and COCO[^lin2014coco] datasets, achieving state-of-the-art performance while requiring significantly less training time and data than previous methods. Additionally, the ClipCap architecture is more straightforward and faster than earlier methods.
 
@@ -98,13 +103,13 @@ Apart from images, other visual data, such as video segments, naturally have lon
 <!-- Describe your novel contribution. -->
 Our research aims to explore potential performance enhancements in video captioning by integrating a Memorizing Transformer[^wu2022memorizing] into ClipCap's mapping network. The original paper applies the concept of Memorizing Transformers to language models, aiming to address the phenomenon of long-term dependencies within textual information. We propose extending this approach to incorporate visual information in the context of video captioning, where long-range dependencies are also prevalent.
 
-The Memorizing Transformer is an extension of the original Transformer[^vaswani2017attention] architecture that incorporates so-called _memory layers_ (see [figure 2]). Typically, a Transformer can only account for a fixed amount of tokens, called the _context window_, when calculating attention[^vaswani2017attention]. Increasing the size of this window is impractical, as the memory size required scales quadratically with the context window size[^kitaev2020reformer]. The Memorizing Transformer aims to improve this by adding an external memory component to the conventional self-attention mechanism.
+The Memorizing Transformer is an extension of the original Transformer[^vaswani2017attention] architecture that incorporates so-called _memory layers_ (see [figure 3]). Typically, a Transformer can only account for a fixed amount of tokens, called the _context window_, when calculating attention[^vaswani2017attention]. Increasing the size of this window is impractical, as the memory size required scales quadratically with the context window size[^kitaev2020reformer]. The Memorizing Transformer aims to improve this by adding an external memory component to the conventional self-attention mechanism.
 
 Specifically, each memory layer has an external memory consisting of keys and values generated by the self-attention mechanism for previous tokens. Subsequent token chunks can attend to this memory to retrieve valuable information. Rather than employing full attention over the weighted sum of all keys and values in the memory, an approximate k-nearest neighbours (kNN) algorithm is used to attend to the memory, identifying the most relevant keys and values (the number of which is a hyperparameter). These selected keys and values are then utilized to compute the so-called _top-k attention_.
 
-[figure 2]: images/Memorizing_Transformer.png "Memorizing Transformer architecture"
-![Memorizing Transformer architecture][figure 2] \
-_[Figure 2]: Overview of the Memorizing Transformer architecture[^wu2022memorizing]. The external memory (left) is updated after each training step, and it is accessed in subsequent steps using approximate kNN lookup._
+[figure 3]: images/Memorizing_Transformer.png "Memorizing Transformer architecture"
+![Memorizing Transformer architecture][figure 3] \
+_[Figure 3]: Overview of the Memorizing Transformer architecture[^wu2022memorizing]. The external memory (left) is updated after each training step, and it is accessed in subsequent steps using approximate kNN lookup._
 
 The approximate kNN algorithm allows the external memory to be scaled quite significantly, as efficient implementations exist. Additionally, since the external memory does not participate in backpropagation, it functions as a non-learnable parameter, enabling even more efficient scaling of memory size.
 
@@ -120,33 +125,33 @@ Following the pre-training, we will employ the ActivityNet Captions dataset[^kri
 ### Pre-processing
 Videos are converted into image frames at a rate of 5 frames per second (fps). We extract all frames from the start to the end of each captioned segment, treating each segment as an independent _video clip_. We will denote the set of video clips by $`\{c_i\}^C_{i=1}`$, where the amount of frames of clip $`c_i`$ is given by $`f(c_i)`$. The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only fine-tuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded using the links in our GitHub repository[^github].
 
-A visualization of an ActivityNet Captions video clip is shown in [figure 3]. Each of the captions in this figure is associated with a specific time interval within the video clip. It should be noted that even though we treat the video clips as independent, they may not be, as references to previously described activities or objects may be made (e.g. "Eventually", "Another", "The woman").
+A visualization of an ActivityNet Captions video clip is shown in [figure 4]. Each of the captions in this figure is associated with a specific time interval within the video clip. It should be noted that even though we treat the video clips as independent, they may not be, as references to previously described activities or objects may be made (e.g. "Eventually", "Another", "The woman").
 
-[figure 3]: images/ActivityNet_Captions.png "ActivityNet Captions video clip example"
-![ActivityNet Captions video clip example][figure 3] \
-_[Figure 3]: Visualization of an ActivityNet Captions video clip[^krishna2017dense]. The video clip is shown on the left, and the corresponding caption is shown on the right._
+[figure 4]: images/ActivityNet_Captions.png "ActivityNet Captions video clip example"
+![ActivityNet Captions video clip example][figure 4] \
+_[Figure 4]: Visualization of an ActivityNet Captions video clip[^krishna2017dense]. The video clip is shown on the left, and the corresponding caption is shown on the right._
 
 ### Data loading
-Since the external memories of the Memorizing Transformer need to be updated sequentially, we have to process each video clip's frames one after the other. This effectively makes the batch size equal to 1, making the training process very inefficient. Instead, we parallelize the operation by processing multiple video clips simultaneously. This parallel data loading process is illustrated in [figure 4]. In this visualization, video clips are laid out horizontally and stacked vertically, where the number of rows corresponds to the batch size $B$, and the number of columns is the number of batching steps $S$.
+Since the external memories of the Memorizing Transformer need to be updated sequentially, we have to process each video clip's frames one after the other. This effectively makes the batch size equal to 1, making the training process very inefficient. Instead, we parallelize the operation by processing multiple video clips simultaneously. This parallel data loading process is illustrated in [figure 5]. In this visualization, video clips are laid out horizontally and stacked vertically, where the number of rows corresponds to the batch size $B$, and the number of columns is the number of batching steps $S$.
 
-[figure 4]: images/Dataloader_ActivityNet_Captions.png "Parallel data processing"
-![Parallel data processing][figure 4] \
-_[Figure 4]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths._
+[figure 5]: images/Dataloader_ActivityNet_Captions.png "Parallel data processing"
+![Parallel data processing][figure 5] \
+_[Figure 5]: Schematic of the parallel data loading process. The video clip indices are just for illustration purposes; they correspond with neither the real video clips nor their lengths._
 
-It should be noted that since the video clips may not contain the same amount of frames, the rows in the table may not stop at the same step. When a step contains less than $B$ frames, the rest is filled with padding frames (represented in [figure 4] by red $`\varnothing`$ blocks). Note that the more steps we have, the longer the training time of our model will be. Thus, we want to minimize the number of steps $S$.
+It should be noted that since the video clips may not contain the same amount of frames, the rows in the table may not stop at the same step. When a step contains less than $B$ frames, the rest is filled with padding frames (represented in [figure 5] by red $`\varnothing`$ blocks). Note that the more steps we have, the longer the training time of our model will be. Thus, we want to minimize the number of steps $S$.
 
 Mathematically, each row can be seen as a _bin_ $b$ in which we can put a set of video clips $`C^{(b)}`$. The _bin size_ is the total amount of frames that the bin contains and is given by $`f(b) = {\sum}_{c_j \in C^{(b)}} f(c_j)`$. Now, to minimize $S$, we want to partition the video clips into $B$ bins such that the maximum bin size is minimized. Thus, we are looking for the set of bins $`\{C^{(b)}\}_{b=1}^B`$ that minimizes $`\max(f(b) \mid b \in \{1, \dots, B\})`$. This corresponds to the multiway number partitioning problem[^graham1969bounds], a well-known computer science problem[^wikipedia2023mnp]. Unfortunately, this problem is NP-complete[^garey1979computers], so we cannot find an optimal solution in polynomial time. The _approximation ratio_ can be used to evaluate alternative approximation algorithms, which is the largest bin size returned by such an algorithm divided by the largest bin size in the optimal solution. In our code, we use the `prtpy` implementation[^coinor2023prtpy] of the Multifit algorithm[^coffman1978application] [^wikipedia2023multifit], which has a worst-case approximation ratio of $\frac{13}{11}$ in the general $B$-bin case[^yue1990exact]. This implies that the extra training time of our model is at most 18.2% larger than the optimal configuration (note that this is an upper bound since empty frames will not prolong the training time by much).
 
 ## Training
-Regarding model architecture, MemClipCap is simply ClipCap with a Memorizing Transformer as a mapping network. This Memorizing Transformer incorporates one or more memory layers and operates on batches of single frames instead of token sequences. Only the mapping network of MemClipCap is trained, while both the image encoder (CLIP) and the textual decoder (GPT-2) are kept frozen.
+Regarding model architecture, MemClipCap is simply ClipCap with a Memorizing Transformer as its mapping network. This Memorizing Transformer incorporates one or more memory layers and operates on batches of single frames instead of the original paper's usage of token sequences[^wu2022memorizing]. Only the mapping network of MemClipCap is trained, while both the image encoder (CLIP) and the textual decoder (GPT-2) are kept frozen.
 
-The training data is loaded in batches. Each batch index corresponds to a different series of video clips; for example, in [figure 4], clips $c_1$, $c_{11}$ ... $c_{91}$ are all laid out one frame after another at index 0. Thus, each batch index requires a separate external memory at each memorizing layer, which is cleared at the start of a new video clip.
+The training data is loaded in batches. As described in the [data loading](#data-loading) section, each batch index corresponds to a different series of video clips; for example, in [figure 5], clips $c_1$, $c_{11}$ ... $c_{91}$ are all laid out one frame after another at index 0. Thus, each batch index requires a separate external memory at each memorizing layer, which is cleared at the start of a new video clip.
 
-The forward pass of the MemClipCap model begins with the computation of the CLIP embeddings for all frames in the batch. Each CLIP embedding is then mapped to a prefix by the Memorizing Transformer. In doing so, the self-attention mechanism of each transformer layer generates a (key, value) pair for every input. If that layer is a memorizing layer, it appends these (key, value) pairs to the corresponding external memories. The (key, value) pair generated at layer $l$ for an input at batch index $i$ is appended to the external memory $M_{l, i}$. Before appending, the top-k nearest (key, value) pairs for that input are first retrieved. This allows us to incorporate information from previous frames using the gating mechanism described in the [Memorizing Transformer](#memorizing-transformer) section.
+The forward pass of the MemClipCap model begins with the computation of the CLIP embeddings for all frames in the batch. Each CLIP embedding is then mapped to a prefix by the Memorizing Transformer. In doing so, the self-attention mechanism of each Transformer layer generates a (key, value) pair for every input. If that layer is a memorizing layer, it appends these (key, value) pairs to the corresponding external memories (see also [figure 1]). The (key, value) pair generated at layer $l$ for an input at batch index $i$ is appended to the external memory $M_{l, i}$. Before appending, the top-k nearest (key, value) pairs for that input are first retrieved. This allows us to incorporate information from previous frames using the gating mechanism described in the [Memorizing Transformer](#memorizing-transformer) section.
 
 The remainder of the forward pass is executed only with those frames in the batch that are the last in a video clip. This is because, during inference, a caption should only be generated once the model has seen all frames; for other frames, it is sufficient to update the external memories. During training, the forward pass continues by concatenating the prefix generated by the mapping network to the ground truth caption embedding and feeding the result to the language model. Like with ClipCap, the training objective is to predict the caption tokens conditioned on the prefix in an autoregressive fashion. A cross-entropy loss is therefore used to update the mapping network's parameters in the backward pass. Finally, during inference, beam search is used to generate a caption based on the language model outputs given the prefix for the last frame.
 
-We pre-trained MemClipCap and fine-tuned the baselines without using memory. In this process, we regarded each input image as a video clip of length 1, which meant that all memories were cleared at the end of each forward pass.
+We pre-trained a _base model_ and fine-tuned the baselines without using memory. In this process, we regarded each input image as a video clip of length 1, which meant that all memories were cleared at the end of each forward pass, which effectively disabled the memory mechanism.
 
 
 # Experiments
@@ -300,19 +305,19 @@ One more interesting finding is that the baseline model's performance was genera
 
 
 #### Effect of clip length on performance
-One intriguing area we wished to explore was the effect of clip length on the performance of our models. To this end, we plotted the performance of each of the best models against the clip lengths. [Figure 5] shows these results for MemClipCap and the three baseline models.
+One intriguing area we wished to explore was the effect of clip length on the performance of our models. To this end, we plotted the performance of each of the best models against the clip lengths. [Figure 6] shows these results for MemClipCap and the three baseline models.
 
 Upon closer examination, it appears that MemClipCap and the middle frame baseline perform better as the number of frames in a clip increases. On the other hand, the last frame baseline demonstrates better performance on short clips while performing increasingly worse on longer ones. This trend indicates that MemClipCap is actually remembering content from previous frames and that not only the last frame is taken into account.
 
-However, the majority of video clips in our test set consist of a small number of frames, as illustrated by the histogram in [figure 6]. This clearly shows that the test results are biased towards the performance of models on shorter clips. As a result, even though MemClipCap's performance on a wide range of clip lengths appears to be relatively robust, its overall score is lower when compared to the last frame baseline, even though this baseline is only slightly better on short clips.
+However, the majority of video clips in our test set consist of a small number of frames, as illustrated by the histogram in [figure 7]. This clearly shows that the test results are biased towards the performance of models on shorter clips. As a result, even though MemClipCap's performance on a wide range of clip lengths appears to be relatively robust, its overall score is lower when compared to the last frame baseline, even though this baseline is only slightly better on short clips.
 
-[figure 5]: images/plots/nframes_vs_metrics.png "Clip length vs. performance for all best models"
-![Clip length vs. performance for all best models][figure 5] \
-_[Figure 5]: Performance of our best MemClipCap and baseline models on the test set as a function of the number of frames in the clip. A window size of 25 frames was used to smooth the curves._
+[figure 6]: images/plots/nframes_vs_metrics.png "Clip length vs. performance for all best models"
+![Clip length vs. performance for all best models][figure 6] \
+_[Figure 6]: Performance of our best MemClipCap and baseline models on the test set as a function of the number of frames in the clip. A window size of 25 frames was used to smooth the curves._
 
-[figure 6]: images/plots/Initial_clip_nframes_frequency.png "Clip length histogram"
-![Clip length histogram][figure 6] \
-_[Figure 6]: Histogram of the clip length (number of frames) when using the initial clip of each video._
+[figure 7]: images/plots/Initial_clip_nframes_frequency.png "Clip length histogram"
+![Clip length histogram][figure 7] \
+_[Figure 7]: Histogram of the clip length (number of frames) when using the initial clip of each video._
 
 
 ### Qualitative analysis
@@ -321,12 +326,11 @@ TODO
 ## Ablation studies
 
 ### Batch size
+To assess the impact of the batch size on the performance of MemClipCap and the baseline models, we conducted an ablation study comparing models trained with different batch sizes. In particular, in [table 3](#table-batch-size), we evaluate our MemClipCap model on the test set using a batch size of 5 and the baselines using a batch size of 40.
 
-To assess the impact of the batch size on the performance of MemClipCap and the baseline models, we conducted an ablation study comparing models trained with different batch sizes. In particular, we compared our best MemClipCap model trained with a smaller batch size of 5 with the baseline models trained with a larger batch size of 40. The results for this comparison are provided in [Table 3](#table-batch-size).
+The MemClipCap model with a batch size of 5 resulted in higher scores for all evaluation metrics than the MemClipCap model with a batch size of 40, indicating that the model benefits from a smaller batch size when incorporating long-range dependencies. This improved performance may be attributed to the increased attentiveness of the model towards individual video clips, as smaller batch sizes can provide more focused learning. In contrast, the baseline models exhibited substantially lower scores for all metrics when trained with a batch size of 40. The performance drop can be attributed to the loss of context, which is crucial for capturing relevant information in video captioning tasks.
 
-The MemClipCap model with a batch size of 5 resulted in higher scores for all evaluation metrics than the MemClipCap model with a batch size of 40, indicating that the model benefits from a smaller batch size when incorporating long-range dependencies. This improved performance may be attributed to the increased attentiveness of the model towards individual video clips, as smaller batch sizes can provide more focused learning. In contrast, the baseline models exhibited substantially lower scores for all metrics when trained with a batch size of 40. The performance drop can be attributed to the loss of context, which is crucial for capturing relevant information in video captioning tasks. When trained with a larger batch size, the baseline models may not effectively capture the dependencies in the video clips, leading to a weaker understanding of the underlying patterns and events.
-
-The findings of this ablation study emphasize the importance of batch size in video captioning tasks. For models that rely on long-range dependencies, such as MemClipCap, smaller batch sizes can enhance the model's ability to capture relevant context and generate more accurate captions. On the other hand, baseline models that do not account for long-range dependencies may suffer from reduced performance when utilizing larger batch sizes.
+On the other hand, the [qualitative analysis](#qualitative-analysis) revealed that the MemClipCap model with a batch size of 5 was prone to generating repetitive captions. This suggests that the model may be overfitting to the training data, which is a common issue with smaller batch sizes.
 
 <table id="table-batch-size">
   <tr>
@@ -431,7 +435,7 @@ _[Table 3](#table-batch-size): Results of our MemClipCap model with batch size 5
 
 _[Table 4](#table-initial-clip-vs-all-clips): Results of our best MemClipCap model compared to our best three baseline models, when trained on all clips of each video instead of just the initial clip. The best model for each metric is shown in __bold italics__._
 
-Comparing both tables reveals that the _initial clip_ models consistently outperform the _all clips_ models on all metrics. We identify two possible reasons for this. First, as mentioned in the [pre-processing](#pre-processing) section, our model treats all clips as independent, while the ground truth captions in the data may reference earlier captions from the same video. This effect was shown in [figure 3]. Second, as the total number of clips is kept constant, having multiple clips coming from the same video reduces the amount of diversity in the training data. Therefore, when constrained to a maximum number of clips for training, it is more efficient to use only one clip per video.
+Comparing both tables reveals that the _initial clip_ models consistently outperform the _all clips_ models on all metrics. We identify two possible reasons for this. First, as mentioned in the [pre-processing](#pre-processing) section, our model treats all clips as independent, while the ground truth captions in the data may reference earlier captions from the same video. This effect was shown in [figure 4]. Second, as the total number of clips is kept constant, having multiple clips coming from the same video reduces the amount of diversity in the training data. Therefore, when constrained to a maximum number of clips for training, it is more efficient to use only one clip per video.
 
 
 # Conclusion
