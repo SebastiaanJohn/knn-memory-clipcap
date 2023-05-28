@@ -1,7 +1,7 @@
 <!-- omit from toc -->
 # MemClipCap: Enhancing ClipCap with long-range dependency handling for video captioning
 > Authors: Sebastiaan Dijkstra, Erik Buis, Jan Bakker, Jelke Matthijsse, Dennis Agafonov \
-> Date: 29-5-2023 \
+> Date: 28-5-2023 \
 > Deep Learning 2 \
 > University of Amsterdam
 
@@ -220,9 +220,9 @@ Additionally, we conducted experiments with different batch sizes, comparing the
 # Results
 <!-- Results of your work (link that part with the code in the jupyter notebook) -->
 
-The table below shows the results of our ClipMemCap model compared to our three baseline models.
+The table below shows the results of our MemClipCap model compared to our three baseline models.
 
-|                 | __ClipMemCap__ <br> (bs 40, initial clip)| __Baseline #1__ <br>(bs 5, initial clip, first frame) | __Baseline #2__ <br>(bs 5, initial clip, middle frame)| __Baseline #3__ <br>(bs 5, initial clip, last frame) |
+|                 | __MemClipCap__ <br> (bs 40, initial clip)| __Baseline #1__ <br>(bs 5, initial clip, first frame) | __Baseline #2__ <br>(bs 5, initial clip, middle frame)| __Baseline #3__ <br>(bs 5, initial clip, last frame) |
 |-----------------|----------------|-----------------|-----------------|-----------------|
 | BLEU_1          | 19.2153        | 20.8486         | 20.2418         | **21.4235**     |
 | BLEU_2          | 8.0668         | 8.5534          | 8.8150          | **9.0937**      |
@@ -231,9 +231,9 @@ The table below shows the results of our ClipMemCap model compared to our three 
 | METEOR          | 9.4595         | 9.8738          | 10.0628         | **10.2781**     |
 | ROUGE_L         | 24.6301        | **24.9494**     | 23.7886         | 24.6975         |
 
-The results of our study indicate that our ClipMemCap model did not demonstrate superior performance compared to the three baseline models across the evaluation metrics BLEU-1, BLEU-2, BLEU-3, BLEU-4, METEOR, and Rouge-L. These baseline models specifically consider, respectively, the first, middle, or last frame of a clip to generate captions. Additionally, the three baseline models exhibited similar performance levels.
+The results of our study indicate that our MemClipCap model did not demonstrate superior performance compared to the three baseline models across the evaluation metrics BLEU-1, BLEU-2, BLEU-3, BLEU-4, METEOR, and Rouge-L. These baseline models specifically consider, respectively, the first, middle, or last frame of a clip to generate captions. Additionally, the three baseline models exhibited similar performance levels.
 
-One possible explanation for these findings is that our model solely focuses on captioned clips, which are initially extracted from the ActivityNet dataset based on the premise that each clip represents a distinct action or event within a specific timeframe. Consequently, the frames within a given clip are highly similar, as their similarities justify their extraction as a single clip. Thus, summarizing all frames of a clip (as our ClipMemCap model does) does not enhance performance compared to the baselines that rely on a single frame. Furthermore, the similarities among frames may account for the limited differences observed between the three baseline models. Since the frames are sufficiently similar, generating accurate captions can be achieved with any one frame, regardless of whether it is the first, middle, or last frame.
+One possible explanation for these findings is that our model solely focuses on captioned clips, which are initially extracted from the ActivityNet dataset based on the premise that each clip represents a distinct action or event within a specific timeframe. Consequently, the frames within a given clip are highly similar, as their similarities justify their extraction as a single clip. Thus, summarizing all frames of a clip (as our MemClipCap model does) does not enhance performance compared to the baselines that rely on a single frame. Furthermore, the similarities among frames may account for the limited differences observed between the three baseline models. Since the frames are sufficiently similar, generating accurate captions can be achieved with any one frame, regardless of whether it is the first, middle, or last frame.
 
 Furthermore, when examining each of the four models individually, we observed a descending trend in the scores of the Bleu metrics, namely BLEU-1, BLEU-2, BLEU-3, and BLEU-4. These metrics evaluate the similarity of n-grams (n consecutive words) between the generated caption and the ground truth caption. As the length of these n-grams increases, the probability of finding matching sequences decreases. Consequently, matching single words (unigrams) has the highest probability, while matching longer sequences, such as 4-word sequences (4-grams), has a lower probability. Thus, BLEU-1 yields the highest score, while BLEU-4 yields the lowest score due to the greater difficulty of finding exact matches for longer sequences.
 
