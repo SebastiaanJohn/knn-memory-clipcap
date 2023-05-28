@@ -154,7 +154,7 @@ We used a __validation__ set to select the best model out of the 10 fine-tuning 
 
 Remember that as described in the [pre-processing](#pre-processing) section, it may be the case that captions reference earlier captions from the same video. To measure the magnitude of this effect, we discriminate between models that were only trained and evaluated on the initial video clip of each video and models that were trained and evaluated on all video clips. We refer to these models as the _initial clip_ and _all clips_ models, respectively. Note that we keep the total amount of video clips constant in each case. Please refer to [table 1](#table-dataset-splits) for an overview of the dataset splits.
 
-<!-- I use HTML here because default Markdown can't render multicolumn/multirow cells. Also, I wanted to align the cells inidividually, which is not possible with the standard Markdown syntax. -->
+<!-- I use HTML here because default Markdown can't render multicolumn/multirow cells. Also, I wanted to align the cells inidividually, which is not possible with the standard Markdown syntax. Also also, I wanted to give the table an ID so I could reference it, which is not possible with standard Markdown. -->
 <table id="table-dataset-splits">
   <tr>
     <th colspan=2></th>
