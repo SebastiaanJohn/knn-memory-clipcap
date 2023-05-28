@@ -450,7 +450,7 @@ In future work, we recommend conducting more in-depth hyperparameter searches to
 <!-- Close the notebook with a description of each student's contribution. -->
 - Dennis Agafonov: Coding: COCO parsing, evaluation code, demo code and notebook, bugfixes.  Writing: draft version, introduction, related work, memorizing transformer, results.
 - Jelke Matthijsse: evaluation code, demo code, writing.
-- Sebastiaan Dijkstra: coding including: dataset, parsers, validation, clipcap, general improvements + bugfixes. Model training/evaluation. Writing including: abstract, datasets, experiments, results, discussion, conclusion, general grammar/spelling improvements.
+- Sebastiaan Dijkstra: coding including: dataset, parsers, validation, clipcap, general improvements + bugfixes. Model training/evaluation. Writing including: abstract, datasets, experiments, results, ablation, discussion, conclusion, and general grammar/spelling improvements.
 - Erik Buis: coding including: ActivityNet parsing + dataloading (Multifit algorithm), general improvements + bugfixes. Sections I wrote fully or mostly: first part of "introduction", "ClipCap summary", ClipCap "strengths" and "weaknesses", "datasets", "effect of clip length on performance". Sections I (re)wrote partially: All sections. Other writing activities in order of time spent: improving flow/cohesiveness of text, conciseness of text, reorganizing structure, grammar fixes. Other activities: creation of all tables and figures in the blogpost, including all plots and code necessary to create the plots.
 - Jan Bakker:
 
