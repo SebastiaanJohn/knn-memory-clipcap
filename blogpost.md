@@ -106,7 +106,7 @@ In line with the methodology of ClipCap, we use the COCO dataset[^lin2014coco] f
 Following the pre-training, we will employ the ActivityNet Captions dataset[^krishna2017dense] for fine-tuning. The ActivityNet Captions dataset provides a more task-specific data source explicitly designed for captioning temporally spread-out video activities. It contains 20k videos with 100k detailed descriptions of sequences of events. To the best of our knowledge, this makes it the optimal choice for our research.
 
 ### Pre-processing
-Videos are converted into image frames at a rate of 5 frames per second (fps). We extract all frames from the start to the end of each captioned segment, treating each segment as an independent _video clip_. We will denote the set of video clips by $`\{c_i\}^C_{i=1}`$, where the amount of frames of clip $`c_i`$ is given by $`f(c_i)`$. The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only finetuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded using the links in our GitHub repository[^github].
+Videos are converted into image frames at a rate of 5 frames per second (fps). We extract all frames from the start to the end of each captioned segment, treating each segment as an independent _video clip_. We will denote the set of video clips by $`\{c_i\}^C_{i=1}`$, where the amount of frames of clip $`c_i`$ is given by $`f(c_i)`$. The frames are individually embedded using the CLIP image encoder, and the captions are tokenized using the GPT-2 tokenizer. Given that we are only fine-tuning the model, we will use only a subset of ActivityNet Captions. The final pre-processed datasets can be downloaded using the links in our GitHub repository[^github].
 
 A visualization of an ActivityNet Captions video clip is shown in [figure 3]. Each of the captions in this figure is associated with a specific time interval within the video clip. It should be noted that even though we treat the video clips as independent, they may not be, as references to previously described activities or objects may be made (e.g. "Eventually", "Another", "The woman").
 
@@ -210,8 +210,12 @@ TODO
 - bij last is motivatie dat we kunnen kijken of het model zn memory goed gebruikt
 - andere batch size toevoegen
 -->
-TODO
+While the main results were produced by applying our models only to the first clip of each video, we also introduced three baseline models to provide an in-depth understanding of MemClipCap's performance. The baselines generate captions based on choosing each clip's first, middle, or last frame. By comparing our proposed model with these baseline models, we can assess the effectiveness of incorporating external memory in the context of video captioning tasks.
 
+The choice of first, middle, and last frames for each baseline was motivated by the idea that these frames represent different stages of a given clip. The first frame represents the starting point of the clip's action, the middle one captures the action's progression, and the last frame represents the conclusion of the action or event within the clip. Comparing these baselines provides a better understanding of the model's ability to capture relevant information across different stages of the video and whether retaining the memory of previous frames influences the generation of accurate captions.
+
+In particular, the last frame baseline was introduced to evaluate if the model effectively utilizes its memory to generate meaningful captions, given that it contains information from prior frames, including the clip's various stages. This would help identify the utilization of long-range dependencies in the MemClipCap model.
+Additionally, we conducted experiments with different batch sizes, comparing the original batch size of 40 with a smaller batch size of 5. This allowed us to observe any possible impact the batch size might have on the model's performance, helping to identify the optimal batch size for the task.
 
 # Results
 <!-- Results of your work (link that part with the code in the jupyter notebook) -->
