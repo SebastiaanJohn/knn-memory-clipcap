@@ -171,7 +171,7 @@ def main(args: argparse.Namespace):
     # Load the dataset.
     logging.info(f"Loading {args.split} split of ActivityNet Captions...")
     dataset = load_dataset(
-        "Leyo/ActivityNet_Captions", split=f"{args.split}[1000:{args.subset}]"
+        "Leyo/ActivityNet_Captions", split=f"{args.split}[0:{args.subset}]"
     )
 
     # Pre-process the dataset.
