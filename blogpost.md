@@ -129,6 +129,7 @@ Mathematically, each row can be seen as a _bin_ $b$ in which we can put a set of
 # Experiments
 
 ## Training and evaluation procedure
+
 We initially pre-trained a _base model_ on the full COCO dataset, which we use for the baselines and our proposed model. This allows us to observe how effectively our modification performs relative to the baselines, which offers a fair and accurate comparison of both models' performance on the video captioning task. The pre-training phase was executed for 10 epochs, with a batch size of 40, a prefix embedding dimension of 512, and a prefix length of 10. We used the AdamW[^loshchilov2017decoupled] optimizer with a learning rate of 2e-5.
 
 Following this pre-training phase, we fine-tuned the base model using a subset of the ActivityNet Captions dataset called the __train__ set. The fine-tuning process was executed over 10 epochs while maintaining the same parameters as in the pre-training stage. For the Memorizing Transformer, we selected layers 4 and 5 as memory layers with 32 retrieved memories each and set the maximum amount of kNN memories to 64000.
@@ -217,7 +218,7 @@ The choice of first, middle, and last frames for each baseline was motivated by 
 In particular, the last frame baseline was introduced to evaluate if the model effectively utilizes its memory to generate meaningful captions, given that it contains information from prior frames, including the clip's various stages. This would help identify the utilization of long-range dependencies in the MemClipCap model.
 Additionally, we conducted experiments with different batch sizes, comparing the original batch size of 40 with a smaller batch size of 5. This allowed us to observe any possible impact the batch size might have on the model's performance, helping to identify the optimal batch size for the task.
 
-# Results
+# Results & Discussion
 <!-- Results of your work (link that part with the code in the jupyter notebook) -->
 
 The table below shows the results of our ClipMemCap model compared to our three baseline models.
@@ -231,38 +232,32 @@ The table below shows the results of our ClipMemCap model compared to our three 
 | METEOR          | 9.4595         | 9.8738          | 10.0628         | **10.2781**     |
 | ROUGE_L         | 24.6301        | **24.9494**     | 23.7886         | 24.6975         |
 
-The results of our study indicate that our ClipMemCap model did not demonstrate superior performance compared to the three baseline models across the evaluation metrics BLEU-1, BLEU-2, BLEU-3, BLEU-4, METEOR, and Rouge-L. These baseline models specifically consider, respectively, the first, middle, or last frame of a clip to generate captions. Additionally, the three baseline models exhibited similar performance levels.
+The results of our study indicate that our ClipMemCap model did not demonstrate superior performance compared to the three baseline models across the evaluation metrics BLEU-1, BLEU-2, BLEU-3, BLEU-4, METEOR, and Rouge-L. The three baseline models, which generated captions based on only one video clip frame (first, middle, or last), showed relatively similar performances, suggesting that one frame may already provide sufficient information for generating accurate captions.
 
-One possible explanation for these findings is that our model solely focuses on captioned clips, which are initially extracted from the ActivityNet dataset based on the premise that each clip represents a distinct action or event within a specific timeframe. Consequently, the frames within a given clip are highly similar, as their similarities justify their extraction as a single clip. Thus, summarizing all frames of a clip (as our ClipMemCap model does) does not enhance performance compared to the baselines that rely on a single frame. Furthermore, the similarities among frames may account for the limited differences observed between the three baseline models. Since the frames are sufficiently similar, generating accurate captions can be achieved with any one frame, regardless of whether it is the first, middle, or last frame.
+One possible explanation for these findings is that our model solely focuses on captioned clips, which are initially extracted from the ActivityNet dataset based on the premise that each clip represents a distinct action or event within a specific timeframe. Consequently, the frames within a given clip are highly similar, as their similarities justify their extraction as a single clip. Thus, summarizing all frames of a clip (as our ClipMemCap model does) does not enhance performance compared to the baselines that rely on a single frame. Furthermore, the similarities among frames may account for the limited differences observed between the three baseline models. Since the frames are sufficiently similar, generating accurate captions can be achieved with any frame, regardless of whether it is the first, middle, or last.
 
-Furthermore, when examining each of the four models individually, we observed a descending trend in the scores of the Bleu metrics, namely BLEU-1, BLEU-2, BLEU-3, and BLEU-4. These metrics evaluate the similarity of n-grams (n consecutive words) between the generated caption and the ground truth caption. As the length of these n-grams increases, the probability of finding matching sequences decreases. Consequently, matching single words (unigrams) has the highest probability, while matching longer sequences, such as 4-word sequences (4-grams), has a lower probability. Thus, BLEU-1 yields the highest score, while BLEU-4 yields the lowest score due to the greater difficulty of finding exact matches for longer sequences.
+When examining each of the four models individually, we observed a descending trend in the scores of the Bleu metrics, namely BLEU-1, BLEU-2, BLEU-3, and BLEU-4. These metrics evaluate the similarity of n-grams (n consecutive words) between the generated caption and the ground truth caption. As the length of these n-grams increases, the probability of finding matching sequences decreases. Consequently, matching single words (unigrams) has the highest probability, while matching longer sequences, such as 4-word sequences (4-grams), has a lower probability. Thus, BLEU-1 yields the highest score, while BLEU-4 yields the lowest score due to the greater difficulty of finding exact matches for longer sequences.
 
-
-# Conclusion & Discussion
+# Conclusion
 <!-- > TODO Somewhere in the discussion, we should mention the following:
 > Aangezien ons model niet beter scoort dan de baseline, moeten we in de blogpost kunnen uitleggen waarom. Onze hypothese is dat er 2 redenen zijn:
 > 1. Er zijn veel hyperparameters (memorizing layers, num retrieved memories, batch size, learning rate etc.) die getweakt kunnen worden, maar wij hebben geen hyperparameter search kunnen uitvoeren.
 > 2. De baseline zelf is al best een goed model; omdat de clips redelijk kort zijn kun je op basis van 1 frame vaak een prima caption genereren.
 
-
 > TODO Somewhere in the discussion, we should mention the following:
 > While we only train a model to caption videos, we hypothesize that our enhancement would also be able to generalize to other modalities such as audio files, because we integrate a general form of long-range dependency handling that is not specific to videos. -->
 
-In conclusion, our research aimed to enhance the ClipCap method specifically for video captioning by integrating a Memorizing Transformer into the existing architecture. Despite the theoretical underpinnings suggesting the utilization of long-range dependencies in video captioning, our results demonstrated that the proposed MemClipCap model did not outperform the baseline models across the chosen evaluation metrics. This may be due to the inherently high similarity between the frames within the captioned clips, causing the MemClipCap model to not substantially benefit from considering contextual information across different frames.
+In conclusion, our research aimed to enhance the ClipCap method specifically for video captioning by integrating a Memorizing Transformer into the existing architecture. Despite the theoretical underpinnings suggesting the utilization of long-range dependencies in video captioning, our results demonstrated that the proposed MemClipCap model did not outperform the baseline models across the chosen evaluation metrics.
+Our model's performance might improve with hyperparameter search, as various hyperparameters could be further tuned for optimal results. However, we could not perform extensive hyperparameter optimization due to resource constraints.
 
-On the other hand, the three baseline models, which generated captions based on only one frame of the video clip (first, middle, or last), showed relatively similar performances, suggesting that one frame may already provide sufficient information for generating accurate captions.
-
-Our model's performance might improve with hyperparameter search, as various hyperparameters could be further tuned for optimal results. However, we could not perform extensive hyperparameter optimization due to resource constraints. Another potential cause for the MemClipCap model's performance could be the high performance of the baseline itself. Since the clips are relatively short, a single frame might often provide enough context to generate good captions.
-
-While our modifications aimed to enhance video captioning capabilities, this enhancement could generalize to other modalities, such as audio files. Since integrating the Memorizing Transformer introduces a general approach to handling long-range dependencies, it is not specific to videos and could apply to other data types with similar characteristics.
-
-In future work, we recommend conducting more in-depth hyperparameter searches to identify the optimal combination and further investigating the generalizability of the MemClipCap model to other modalities. An exploration of utilizing multiple modalities simultaneously, like combining audio and visual data, could also be a valuable extension of the current research.
+In future work, we recommend conducting more in-depth hyperparameter searches to identify the optimal combination and further investigating the generalizability of the MemClipCap model to other modalities. An exploration of utilizing multiple modalities simultaneously, like combining audio and visual data, could also be a valuable extension of the current research. Additionally, it would be interesting to explore the effectiveness of the MemClipCap model when applied to longer videos, where there is a more significant difference between earlier and later frames that could be more useful for our model.odalities. An exploration of utilizing multiple modalities simultaneously, like combining audio and visual data, could also be a valuable extension of the current research.
 
 # Contributions
 <!-- Close the notebook with a description of each student's contribution. -->
 
 
 # References
+
 [^github]: Our GitHub repository. https://github.com/SebastiaanJohn/knn-memory-clipcap
 
 [^graham1969bounds]: Graham, R. L. (1969). Bounds on multiprocessing timing anomalies. SIAM journal on Applied Mathematics, 17(2), 416-429.
