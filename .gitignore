@@ -167,7 +167,7 @@ tensorboard.sh
 *.pdf
 
 # Project-specific files (e.g. datasets, models, etc.)
-src/data/*
+src/data/*.pkl
 *.mp4
 src/datasets/pytube/__cache__
 checkpoints/*.pt
@@ -175,4 +175,3 @@ checkpoints/*.json
 .tmp
 *.pt
 demos/frames/*
-images/plots/data

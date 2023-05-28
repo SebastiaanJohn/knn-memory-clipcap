@@ -91,8 +91,15 @@ def main(args: argparse.Namespace) -> None:
 
         if i == 0:
             # Show the frequency of the clip lengths as a histogram.
-            plt.hist(nframes, bins=20, histtype="bar", linewidth=2)
-            plt.title(f"Clip Length Frequency - {base_name}")
+            plt.hist(nframes, histtype="bar", linewidth=2, bins=100)
+            plt.title(
+                "Clip Length Frequency\n"
+                + (
+                    "Initial clip"
+                    if "initial clip" in base_name
+                    else "All clips"
+                )
+            )
             plt.xlabel("Clip Length (frames)")
             plt.ylabel("Frequency")
             plt.xlim(0, max_nframes)
@@ -114,9 +121,9 @@ def main(args: argparse.Namespace) -> None:
 
     # Save the plot.
     plt.title(
-        f"Metric vs. Clip Length - {base_name}, "
+        f"Metric vs. Clip Length\n{base_name}\n"
         + (
-            f"window size = {args.window_size}"
+            f"Window size = {args.window_size}"
             if args.smoothing_type == "nearest_neighbour"
             else f"sigma = {args.sigma}"
         )
@@ -154,8 +161,8 @@ if __name__ == "__main__":
     # Define command line arguments.
     parser.add_argument(
         "--path_metric_data",
+        required=True,
         type=str,
-        default="images/plots/data/metrics_mem_all.txt",
         help="Path to the file containing the metric data.",
     )
     parser.add_argument(
@@ -168,7 +175,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--window_size",
         type=int,
-        default=40,
+        default=25,
         help="The window size for the nearest neighbour filter.",
     )
     parser.add_argument(
