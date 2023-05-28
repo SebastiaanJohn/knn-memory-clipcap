@@ -9,8 +9,6 @@
 - [Introduction](#introduction)
   - [Related Work](#related-work)
   - [ClipCap Summary](#clipcap-summary)
-  - [Main results](#main-results)
-  - [Further findings](#further-findings)
 - [Exploring ClipCap's Capabilities](#exploring-clipcaps-capabilities)
   - [Strengths](#strengths)
   - [Weaknesses](#weaknesses)
@@ -72,15 +70,9 @@ More specifically, for a given image, the CLIP image encoder generates an embedd
 ![ClipCap pipeline][figure 2] \
 _[Figure 2]: Overview of the ClipCap pipeline when using training procedure B. In this approach, the CLIP and GPT-2 models are kept frozen, while the mapping network is a Transformer encoder that is trained from scratch._
 
-## Main results
 The authors experiment with two different training procedures for the ClipCap model pipeline. In the first approach (A), the CLIP model is kept frozen and GPT-2 is fine-tuned, while the mapping network is an MLP that is trained from scratch. In the second approach (B), the CLIP and GPT-2 models are both kept frozen, while the mapping network is a Transformer[^vaswani2017attention] encoder that is trained from scratch (see [figure 2]). The authors found that the first approach often yielded better results but required more training time. However, seeing as the accuracy decrease for approach B was relatively small, we decided to use this approach for our video captioning experiments.
 
 Both approaches were evaluated on the Conceptual Captions[^sharma2018conceptual], NoCaps[^agrewal2019nocaps], and COCO[^lin2014coco] datasets, achieving state-of-the-art performance while requiring significantly less training time and data than previous methods. Additionally, the ClipCap architecture is more straightforward and faster than earlier methods.
-
-## Further findings
-Multiple other experiments were conducted to determine when ClipCap performs well and when not. For example, the authors found that approach A results in a much more expressive model but that this model is more susceptible to overfitting. Additionally, an interpretability study was conducted to further understand the model's inner workings, in which the prefix embeddings were interpreted as a sequence of tokens. The authors found that the interpretation is meaningful when both the mapping network and the LM are trained (approach A) but becomes unreadable when only the mapping network is trained (approach B). They hypothesize that this happens because, in approach B, the mapping network can exploit the LM's intricacies that steer it towards generating the correct caption. These can intuitively be seen as "tricks" that are not interpretable to humans.
-
-The authors conducted multiple ablation studies to verify and motivate ClipCap's design choices. They found that the mapping network is crucial for the model's performance and that a Transformer architecture is superior when the LM is frozen. At the same time, an MLP is more effective when the LM is additionally fine-tuned. Furthermore, the prefix length was a crucial hyperparameter; a prefix that is too short results in a lack of expressiveness, while a prefix that is too long results in an enormous model that will be slow to train.
 
 
 # Exploring ClipCap's Capabilities
@@ -334,7 +326,7 @@ The video clip set out on the right also provides interesting information. Altho
 With these two and many other videos, it is often the case that a single frame is often informatory enough to generate a solid caption. This could be a reason why the baseline models perform similarly to or even better than the MemClipCap model, as could be seen in the quantitative results. It is also important to note that the clips set out in this qualitative analysis are just two examples. From the quantitative results it follows that the third baseline model performs better than MemClipCap on average, but this qualitative analysis demonstrates what could be a possible cause for certain captions getting higher scores than others.
 
 The qualitative evaluation in [batch size](#batch-size) demonstrates that MemClipCap with batch size of 5 yields slightly better results compared to a batch size of 40. However, an analysis of the actual captions generated reveals that this improvement lacks significance. Numerous clips feature introductory credits frames, accompanied by the ground truth caption "The credits of the clip are shown." Both batch size 5 and batch size 40 generate various renditions of this caption, such as "The opening credits of the clip are shown," "The credits of the video are shown," and "The credits for the clip is shown." When these captions exactly match the ground truth, they form outliers that increase the average performance significantly. But with a minor difference in the caption this effect does not occur. In the batch size 5 model there are a few more of such outliers, compared to the batch size 40 model. Consequently, these discrepancies in the performances of bs5 and bs40 models can easily be explained by insignificant disparities in the generated captions.
-  
+
 ## Ablation studies
 
 ### Batch size
@@ -393,7 +385,7 @@ On the other hand, the [qualitative analysis](#qualitative-analysis) revealed th
 </table>
 
 _[Table 3](#table-batch-size): Results of our MemClipCap model with batch size 5 and our three baseline models with batch size 40._
-  
+
 
 ### Initial clip vs all clips
 [Table 2](#table-main-results) showed the results for the best performing models, which were obtained by training and evaluating only on the initial clip of each video. For comparison, [table 4](#table-initial-clip-vs-all-clips) also shows the results of training and evaluating on all clips in a video, while keeping the total number of clips used for training constant.
