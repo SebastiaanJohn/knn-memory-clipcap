@@ -248,6 +248,15 @@ Furthermore, when examining each of the four models individually, we observed a 
 > TODO Somewhere in the discussion, we should mention the following:
 > While we only train a model to caption videos, we hypothesize that our enhancement would also be able to generalize to other modalities such as audio files, because we integrate a general form of long-range dependency handling that is not specific to videos.
 
+In conclusion, our research aimed to enhance the ClipCap method specifically for video captioning by integrating a Memorizing Transformer into the existing architecture. Despite the theoretical underpinnings suggesting the utilization of long-range dependencies in video captioning, our results demonstrated that the proposed MemClipCap model did not outperform the baseline models across the chosen evaluation metrics. This may be due to the inherently high similarity between the frames within the captioned clips, causing the MemClipCap model to not substantially benefit from considering contextual information across different frames.
+
+On the other hand, the three baseline models, which generated captions based on only one frame of the video clip (first, middle, or last), showed relatively similar performances, suggesting that one frame may already provide sufficient information for generating accurate captions.
+
+Our model's performance might improve with hyperparameter search, as various hyperparameters could be further tuned for optimal results. However, we could not perform extensive hyperparameter optimization due to resource constraints. Another potential cause for the MemClipCap model's performance could be the high performance of the baseline itself. Since the clips are relatively short, a single frame might often provide enough context to generate good captions.
+
+While our modifications aimed to enhance video captioning capabilities, this enhancement could generalize to other modalities, such as audio files. Since integrating the Memorizing Transformer introduces a general approach to handling long-range dependencies, it is not specific to videos and could apply to other data types with similar characteristics.
+
+In future work, we recommend conducting more in-depth hyperparameter searches to identify the optimal combination and further investigating the generalizability of the MemClipCap model to other modalities. An exploration of utilizing multiple modalities simultaneously, like combining audio and visual data, could also be a valuable extension of the current research.
 
 # Contributions
 <!-- Close the notebook with a description of each student's contribution. -->
