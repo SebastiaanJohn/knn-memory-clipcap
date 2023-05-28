@@ -257,7 +257,7 @@ In future work, we recommend conducting more in-depth hyperparameter searches to
 
 # Contributions
 <!-- Close the notebook with a description of each student's contribution. -->
-- Dennis Agafonov: evaluation code, demo code and notebook, writing. \
+- Dennis Agafonov: Coding: COCO parsing, evaluation code, demo code and notebook, bugfixes.  Writing: draft version, introduction, related work, memorizing transformer, results.
 - Jelke Matthijsse: evaluation code, demo code, writing.
 - Sebastiaan Dijkstra: coding including: dataset, parsers, validation, clipcap, general improvements + bugfixes. Model training/evaluation. Writing including: datasets, experiments, results, discussion, conclusion, general grammar/spelling improvements.
 references, acknowledgements.
