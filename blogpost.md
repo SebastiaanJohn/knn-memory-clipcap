@@ -269,7 +269,7 @@ The original ClipCap paper also utilized the CIDEr score. However, this metric c
     <td>3.5515</td>
     <td>0.7883</td>
     <td>9.8738</td>
-    <td><b>24.9494</b></td>
+    <td><b><i>24.9494<b></i></td>
   </tr>
   <tr>
     <td style="text-align: center;"><b>Baseline #2</b><br>(middle frame, bs 5, initial clip)</td>
@@ -282,16 +282,16 @@ The original ClipCap paper also utilized the CIDEr score. However, this metric c
   </tr>
   <tr>
     <td style="text-align: center;"><b>Baseline #3</b><br>(last frame, bs 5, initial clip)</td>
-    <td><b>21.4235</b></td>
-    <td><b>9.0937</b></td>
-    <td><b>3.8431</b></td>
-    <td><b>1.3604</b></td>
-    <td><b>10.2781</b></td>
+    <td><b><i>21.4235</i></b></td>
+    <td><b><i>9.0937</i></b></td>
+    <td><b><i>3.8431</i></b></td>
+    <td><b><i>1.3604</i></b></td>
+    <td><b><i>10.2781</i></b></td>
     <td>24.6975</td>
   </tr>
 </table>
 
-_[Table 2](#table-main-results): Main results of our best MemClipCap model compared to our best three baseline models. The best model for each metric are shown in bold._
+_[Table 2](#table-main-results): Main results of our best MemClipCap model compared to our best three baseline models. The best model for each metric is shown in __bold italics__._
 
 The results of our study indicate that MemClipCap did not demonstrate superior performance compared to the three baseline models across all evaluation metrics. This suggests that one frame may already provide sufficient information for generating accurate captions.
 
@@ -306,6 +306,56 @@ TODO
 
 ### Batch size
 TODO
+
+<table id="table-batch-size">
+  <tr>
+    <th></th>
+    <th style="text-align: center;">BLEU-1</th>
+    <th style="text-align: center;">BLEU-2</th>
+    <th style="text-align: center;">BLEU-3</th>
+    <th style="text-align: center;">BLEU-4</th>
+    <th style="text-align: center;">METEOR</th>
+    <th style="text-align: center;">ROUGE-L</th>
+  </tr>
+  <tr>
+    <td style="text-align: center;"><b>MemClipCap</b><br>(bs 5, all clips)</td>
+    <td><b>19.5892</b></td>
+    <td><b>8.2377</b></td>
+    <td><b>4.3551</b></td>
+    <td><b>1.5735</b></td>
+    <td><b>9.5871</b></td>
+    <td><b>25.1340</b></td>
+  </tr>
+  <tr>
+    <td style="text-align: center;"><b>Baseline #1</b><br>(first frame, bs 40, all clips)</td>
+    <td>0.6649</td>
+    <td>0.0195</td>
+    <td>0.0000</td>
+    <td>0.0000</td>
+    <td>0.9341</td>
+    <td>1.0959</td>
+  </tr>
+  <tr>
+    <td style="text-align: center;"><b>Baseline #2</b><br>(first frame, bs 40, all clips)</td>
+    <td>4.1829</td>
+    <td>1.0198</td>
+    <td>0.1629</td>
+    <td>0.0801</td>
+    <td>3.9912</td>
+    <td>7.0548</td>
+  </tr>
+  <tr>
+    <td style="text-align: center;"><b>Baseline #3</b><br>(first frame, bs 40, all clips)</td>
+    <td>2.9117</td>
+    <td>0.6578</td>
+    <td>0.0846</td>
+    <td>0.0595</td>
+    <td>3.2522</td>
+    <td>4.7583</td>
+  </tr>
+</table>
+
+_[Table 3](#table-batch-size): Results of our MemClipCap model with batch size 5 and our three baseline models with batch size 40. The best model for each metric is shown in __bold italics__._
 
 ### Initial clip vs all clips
 TODO
@@ -322,19 +372,19 @@ TODO
   </tr>
   <tr>
     <td style="text-align: center;"><b>MemClipCap</b><br>(bs 40, all clips)</td>
-    <td><b>14.4053</b></td>
+    <td><b><i>14.4053</i></b></td>
     <td>4.0560</td>
     <td>1.1455</td>
     <td>0.1057</td>
     <td>6.9259</td>
-    <td><b>17.0485</b></td>
+    <td><b><i>17.0485</i></b></td>
   </tr>
   <tr>
     <td style="text-align: center;"><b>Baseline #1</b><br>(first frame, bs 5, all clips)</td>
     <td>13.8661</td>
-    <td><b>4.2128</b></td>
+    <td><b><i>4.2128</i></b></td>
     <td>1.1045</td>
-    <td><b>0.2402</b></td>
+    <td><b><i>0.2402</i></b></td>
     <td>6.9834</td>
     <td>16.3011</td>
   </tr>
@@ -351,16 +401,17 @@ TODO
     <td style="text-align: center;"><b>Baseline #3</b><br>(last frame, bs 5, all clips)</td>
     <td>12.7000</td>
     <td>3.7467</td>
-    <td><b>1.1650</b></td>
+    <td><b><i>1.1650</i></b></td>
     <td>0.2127</td>
-    <td><b>7.1890</b></td>
+    <td><b><i>7.1890</i></b></td>
     <td>15.0981</td>
   </tr>
 </table>
 
-_[Table 4](#table-initial-clip-vs-all-clips): Results of our best MemClipCap model compared to our best three baseline models, when trained on all clips of each video instead of just the initial clip. The best model for each metric is shown in bold. If a model performed better than its respective variant for using only the initial clip (see [table 2](#table-main-results)), the metric is underlined._
+_[Table 4](#table-initial-clip-vs-all-clips): Results of our best MemClipCap model compared to our best three baseline models, when trained on all clips of each video instead of just the initial clip. The best model for each metric is shown in __bold italics__._
 
 ### Effect of clip length on performance
+TODO
 
 [figure 5]: images/plots/MemClipCap_(bs_40,_initial_clip)_nframes_vs_metric_window_size_25.png "Clip length vs. performance for MemClipCap"
 ![Clip length vs. performance for MemClipCap][figure 5] \
@@ -380,7 +431,7 @@ _[Figure 8]: Performance of our best Baseline #3 model on the test set as a func
 
 [figure 9]: images/plots/Initial_clip_nframes_frequency.png "Clip length histogram"
 ![Clip length histogram][figure 9] \
-_[Figure 9]: Histogram of the clip length (number of frames) when using the "initial clip" scheme._
+_[Figure 9]: Histogram of the clip length (number of frames) when using the initial clip of each video._
 
 
 # Conclusion
