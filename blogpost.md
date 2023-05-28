@@ -304,7 +304,12 @@ TODO
 ## Ablation studies
 
 ### Batch size
-TODO
+
+To assess the impact of the batch size on the performance of MemClipCap and the baseline models, we conducted an ablation study comparing models trained with different batch sizes. In particular, we compared our best MemClipCap model trained with a smaller batch size of 5 with the baseline models trained with a larger batch size of 40. The results for this comparison are provided in [Table 3](#table-batch-size).
+
+The MemClipCap model with a batch size of 5 resulted in higher scores for all evaluation metrics than the MemClipCap model with a batch size of 40, indicating that the model benefits from a smaller batch size when incorporating long-range dependencies. This improved performance may be attributed to the increased attentiveness of the model towards individual video clips, as smaller batch sizes can provide more focused learning. In contrast, the baseline models exhibited substantially lower scores for all metrics when trained with a batch size of 40. The performance drop can be attributed to the loss of context, which is crucial for capturing relevant information in video captioning tasks. When trained with a larger batch size, the baseline models may not effectively capture the dependencies in the video clips, leading to a weaker understanding of the underlying patterns and events.
+
+The findings of this ablation study emphasize the importance of batch size in video captioning tasks. For models that rely on long-range dependencies, such as MemClipCap, smaller batch sizes can enhance the model's ability to capture relevant context and generate more accurate captions. On the other hand, baseline models that do not account for long-range dependencies may suffer from reduced performance when utilizing larger batch sizes.
 
 <table id="table-batch-size">
   <tr>
